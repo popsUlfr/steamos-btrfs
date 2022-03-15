@@ -36,6 +36,8 @@ mkdir -p etc/systemd/system
 cp -r "$WORKDIR/etc/systemd/system/." etc/systemd/system/
 mkdir -p usr/lib/steamos
 cp "$WORKDIR/usr/lib/steamos/steamos-convert-home-to-btrfs" usr/lib/steamos/
+# btrfs-convert is missing the reiserfsprogs library to work
+[[ ! -f /usr/lib/libreiserfscore.so.0 ]] && curl -sSL https://archlinux.org/packages/core/x86_64/reiserfsprogs/download | tar -xJf - usr/lib
 mkdir -p usr/lib/hwsupport
 # patch the sdcard format script to force btrfs on sd cards
 [[ -f "usr/lib/hwsupport/format-sdcard.sh" ]] && patch -Np1 -i "$WORKDIR/usr/lib/hwsupport/format-sdcard.sh.patch"
