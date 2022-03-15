@@ -1,6 +1,6 @@
 [Unit]
 Description=Converts ext4 home to btrfs
-Before=local-fs.target home.mount
+Before=local-fs.target
 
 [Service]
 Type=oneshot
