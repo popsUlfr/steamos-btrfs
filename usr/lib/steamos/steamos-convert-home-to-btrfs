@@ -21,6 +21,8 @@ mount -o rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag $HOME
 btrfs subvolume delete /home/ext2_saved
 # Not needed anymore
 rm -rf /home/lost+found
+# Remove the swapfile if present
+rm -f /home/swapfile
 # Create the root subvolume @
 btrfs subvolume create /home/@
 # Move all existing files into the new root
