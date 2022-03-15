@@ -1,0 +1,19 @@
+--- a/usr/bin/mkswapfile	2022-02-28 05:03:11.000000000 +0100
++++ b/usr/bin/mkswapfile	2022-03-15 15:59:26.939140101 +0100
+@@ -28,6 +28,16 @@
+ 
+ [ -e "$SWAPFILE" ] && fail "File '$SWAPFILE' already exists"
+ 
++if [[ "$(findmnt -n -o FSTYPE "$(dirname "$SWAPFILE")")" == "btrfs" ]]
++then
++    SWAPSUBVOLUME="$(dirname "$SWAPFILE")/@$(basename "$SWAPFILE")"
++    [[ ! -d "$SWAPSUBVOLUME" ]] && btrfs subvolume create "$SWAPSUBVOLUME"
++    chattr +C "$SWAPSUBVOLUME"
++    btrfs property set "$SWAPSUBVOLUME" compression none
++    ln -s "$(basename "$SWAPSUBVOLUME")/$(basename "$SWAPFILE")" "$SWAPFILE"
++    SWAPFILE="$SWAPSUBVOLUME/$(basename "$SWAPFILE")"
++fi
++
+ dd if=/dev/zero of="$SWAPFILE" bs=1M count="$SWAPSIZE"
+ chmod 600 "$SWAPFILE"
+ mkswap "$SWAPFILE"

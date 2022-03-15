@@ -46,6 +46,8 @@ mkdir -p usr/lib/hwsupport
 mkdir -p usr/lib/rauc
 # patch the ota post install script to reinject the payload
 [[ -f "usr/lib/rauc/post-install.sh" ]] && patch -Np1 -i "$WORKDIR/usr/lib/rauc/post-install.sh.patch"
+# patch swapfile script to handle btrfs filesystem
+[[ -f "usr/bin/mkswapfile" ]] && patch -Np1 -i "$WORKDIR/usr/bin/mkswapfile.patch"
 cd /
 btrfs property set /mnt ro true
 umount -l "$ROOTFS_DEVICE"
