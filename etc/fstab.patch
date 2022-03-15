@@ -1,0 +1,8 @@
+--- a/etc/fstab	2022-02-28 06:54:12.000000000 +0100
++++ b/etc/fstab	2022-03-15 10:05:05.163477973 +0100
+@@ -7,4 +7,4 @@
+ #/dev/disk/by-partsets/self/var    /var    ext4    defaults                0       2
+ /dev/disk/by-partsets/self/efi    /efi    vfat    defaults,nofail,umask=0077,x-systemd.automount,x-systemd.idle-timeout=1min 0       2
+ /dev/disk/by-partsets/shared/esp  /esp    vfat    defaults,nofail,umask=0077,x-systemd.automount,x-systemd.idle-timeout=1min 0       2
+-/dev/disk/by-partsets/shared/home /home   ext4    defaults,nofail,x-systemd.growfs 0       2
++/dev/disk/by-partsets/shared/home /home   btrfs    defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,subvol=@ 0 0

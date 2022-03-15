@@ -1,0 +1,33 @@
+--- a/home/deck/tools/repair_device.sh	2022-02-28 00:17:03.000000000 +0100
++++ b/home/deck/tools/repair_device.sh	2022-03-15 09:55:54.433646952 +0100
+@@ -70,6 +70,7 @@
+ # Helper to format
+ fmt_ext4()  { [[ $# -eq 2 && -n $1 && -n $2 ]] || die; cmd sudo mkfs.ext4 -F -L "$1" "$2"; }
+ fmt_fat32() { [[ $# -eq 2 && -n $1 && -n $2 ]] || die; cmd sudo mkfs.vfat -n"$1" "$2"; }
++fmt_btrfs() { [[ $# -eq 2 && -n $1 && -n $2 ]] || die; cmd sudo mkfs.btrfs -f -L "$1" "$2"; }
+ 
+ ##
+ ## Prompt mechanics - currently using Zenity
+@@ -183,7 +184,7 @@
+     verifypart "$(diskpart $FS_EFI_B)" vfat efi-B
+     verifypart "$(diskpart $FS_VAR_A)" ext4 var-A
+     verifypart "$(diskpart $FS_VAR_B)" ext4 var-B
+-    verifypart "$(diskpart $FS_HOME)" ext4 home
++    verifypart "$(diskpart $FS_HOME)" btrfs home
+   fi
+ 
+   # clear the var partition (user data), but also if we are reinstalling the OS
+@@ -196,9 +197,10 @@
+ 
+   if [[ $writeHome = 1 ]]; then
+     estat "Creating home partition"
+-    fmt_ext4  home "$(diskpart $FS_HOME)"
+-    # Remove the reserved blocks on the home partition
+-    tune2fs -m 0 "$(diskpart $FS_HOME)"
++    fmt_btrfs home "$(diskpart $FS_HOME)"
++    mount -o rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag "$(diskpart $FS_HOME)" /mnt
++    btrfs subvolume create /mnt/@
++    umount -l "$(diskpart $FS_HOME)"
+   fi
+ 
+   if [[ $writeOS = 1 ]]; then

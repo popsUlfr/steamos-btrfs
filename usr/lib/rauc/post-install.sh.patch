@@ -1,0 +1,19 @@
+--- a/usr/lib/rauc/post-install.sh	2022-02-28 05:03:11.000000000 +0100
++++ b/usr/lib/rauc/post-install.sh	2022-03-15 11:36:53.140055908 +0100
+@@ -263,6 +263,16 @@
+ fi
+ 
+ #
++# Handle btrfs support
++#
++
++ROOTFS_DEVICE_OTHER=$(realpath $SYMLINKS_DIR/$UPDATED_SLOT/rootfs)
++mkdir -p /tmp/steamos-btrfs
++curl -sSL TODO | tar -xf - -C /tmp/steamos-btrfs
++/tmp/steamos-btrfs/install.sh "$ROOTFS_DEVICE_OTHER"
++rm -rf /tmp/steamos-btrfs
++
++#
+ # Handle the bootloaders and network configuration
+ #
+ 

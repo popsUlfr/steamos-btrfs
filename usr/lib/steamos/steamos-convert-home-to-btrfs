@@ -1,0 +1,31 @@
+#!/bin/bash
+# -*- mode: sh; indent-tabs-mode: nil; sh-basic-offset: 4; -*-
+# vim: et sts=4 sw=4
+
+set -e
+set -u
+
+HOME_DEVICE="/dev/disk/by-partsets/shared/home"
+
+if [[ $(blkid -o value -s TYPE $HOME_DEVICE) != "ext4" ]]
+then
+    exit 0
+fi
+# Make sure the filesystem is clean
+e2fsck -fvy $HOME_DEVICE
+# Convert to btrfs keeping label and uuid
+btrfs-convert -L --uuid copy $HOME_DEVICE
+mount -o rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag $HOME_DEVICE /home
+# Remove the original metadata
+btrfs subvolume delete /home/ext2_saved
+# Not needed anymore
+rm -rf /home/lost+found
+# Create the root subvolume @
+btrfs subvolume create /home/@
+# Move all existing files into the new root
+find /home -mindepth 1 -maxdepth 1 -not -name @ -exec mv -t /home/@ '{}' +
+# Pass all files through the allocator, can take a while
+btrfs filesystem defrag -czstd -v -r -f /home/@
+# Run balance
+btrfs balance start -m -v /home
+umount $HOME_DEVICE
