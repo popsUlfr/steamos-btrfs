@@ -15,13 +15,13 @@ Btrfs with its transparent compression and deduplication capabilities can achiev
 
 ### From SteamOS
 
-Switch into Desktop mode, download the tarball from TODO, extract it and launch `./install.sh`
+Switch into Desktop mode, download the tarball from https://gitlab.com/popsulfr/steamos-btrfs/-/archive/main/steamos-btrfs-main.tar.gz, extract it and launch `./install.sh`
 
 or by opening a terminal and executing
 
 ```
 mkdir steamos-btrfs
-curl -sSL TODO | tar -xf - -C steamos-btrfs
+curl -sSL https://gitlab.com/popsulfr/steamos-btrfs/-/archive/main/steamos-btrfs-main.tar.gz | tar -xzf - -C steamos-btrfs --strip-components=1
 sudo ./steamos-btrfs/install.sh
 ```
 
@@ -66,7 +66,7 @@ TODO
 
 ## TODO
 
-[ ] Signal btrfs conversion progress using plymouth
-[ ] Make it more robust in many different situations
-[ ] Test more
-[ ] Test with real Setam Deck
+- [ ] Signal btrfs conversion progress using plymouth
+- [ ] Make it more robust in many different situations
+- [ ] Test more
+- [ ] Test with real Steam Deck

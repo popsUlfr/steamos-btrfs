@@ -9,14 +9,13 @@ ROOTFS_DEVICE="${1:-/dev/disk/by-partsets/self/rootfs}"
 
 help()
 {
-  readvar HELPMSG << EOD
+  cat << EOD
 This script will install the payload to keep or create a btrfs home and sd cards.
 
 First argument should be the rootfs device node or /dev/disk/by-partsets/self/rootfs by default.
 EOD
-  emsg "$HELPMSG"
   if [[ "$EUID" -ne 0 ]]; then
-    eerr "Please run as root."
+    echo "Please run as root." 1>&2
     exit 1
   fi
 }
