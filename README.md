@@ -8,6 +8,14 @@ Btrfs with its transparent compression and deduplication capabilities can achiev
 **WARNING!!!! It will install a service that will attempt on the next boot to convert the ext4 /home partition into btrfs and depending on the already used storage this operation may fail or take a long time!**
 
 - https://wiki.archlinux.org/title/Btrfs
+- https://wiki.archlinux.org/title/F2FS
+
+## Features
+
+- Btrfs /home conversion from ext4
+- Btrfs formatted SD card support
+- Btrfs formating of SD card by default
+- f2fs formatted SD card support
 
 ## Install
 
@@ -59,6 +67,14 @@ The following mount options are used:
 - `space_cache=v2`: make sure the newer implementation is used
 - `autodefrag`: small random writes are queued up for defragmentation
 - `subvol=@`: by default it will create a subvolume `@` which is used as real root of the filesystem. SD Cards formatted as btrfs will be searched for the `@` subvolume or fallback to `/`.
+
+## F2FS mount options
+
+- `noatime,lazytime`: to keep writes to a minimum
+- `compress_algorithm=zstd`: use zstd compression
+- `compress_chksum`: verify compressed blocks with a checksum
+- `whint_mode=fs-based`: optimize fs-log management
+- `atgc,gc_merge`: use better garbage collector, async garbage collection
 
 ## Deduplication
 

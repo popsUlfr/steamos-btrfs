@@ -6,6 +6,7 @@ set -eux
 
 WORKDIR="$(readlink -f "$(dirname "$0")")"
 ROOTFS_DEVICE="${1:-/dev/disk/by-partsets/self/rootfs}"
+PKGS=(f2fs-tools reiserfsprogs)
 
 help()
 {
@@ -36,8 +37,6 @@ mkdir -p etc/systemd/system
 cp -r "$WORKDIR/etc/systemd/system/." etc/systemd/system/
 mkdir -p usr/lib/steamos
 cp "$WORKDIR/usr/lib/steamos/steamos-convert-home-to-btrfs" usr/lib/steamos/
-# btrfs-convert is missing the reiserfsprogs library to work
-[[ ! -f "usr/lib/libreiserfscore.so.0" ]] && curl -sSL https://archlinux.org/packages/core/x86_64/reiserfsprogs/download | tar -xJf - usr/lib
 mkdir -p usr/lib/hwsupport
 # patch the sdcard format script to force btrfs on sd cards
 [[ -f "usr/lib/hwsupport/format-sdcard.sh" ]] && patch -Np1 -i "$WORKDIR/usr/lib/hwsupport/format-sdcard.sh.patch"
@@ -48,6 +47,20 @@ mkdir -p usr/lib/rauc
 [[ -f "usr/lib/rauc/post-install.sh" ]] && patch -Np1 -i "$WORKDIR/usr/lib/rauc/post-install.sh.patch"
 # patch swapfile script to handle btrfs filesystem
 [[ -f "usr/bin/mkswapfile" ]] && patch -Np1 -i "$WORKDIR/usr/bin/mkswapfile.patch"
+# install the needed arch packages
+mkdir -p /tmp/pacman-cache
+pacman --dbpath usr/share/factory/var/lib/pacman --root . --cachedir /tmp/pacman-cache --gpgdir etc/pacman.d/gnupg -Sy --needed --noconfirm "${PKGS[@]}"
+rm -rf /tmp/pacman-cache
+# patch the /usr/lib/manifest.pacman with the new packages
+echo '#Package[:Architecture] #Version' > usr/lib/manifest.pacman
+pacman --dbpath usr/share/factory/var/lib/pacman --root . --cachedir /tmp/pacman-cache --gpgdir etc/pacman.d/gnupg -Qiq | \
+  sed -n 's/^\(Name\|Version\)\s*:\s*\(\S\+\)\s*$/\2/p' | \
+  xargs -d'\n' -n 2 printf '%s %s\n' >> usr/lib/manifest.pacman
+# synchronize the /var partition with the new pacman state if needed
+mkdir -p var
+mount "$(dirname "$ROOTFS_DEVICE")/var" var
+[[ -d var/lib/pacman ]] && cp -a -r -u usr/share/factory/var/lib/pacman/. var/lib/pacman/
+umount -l var
 cd /
 btrfs property set /mnt ro true
 umount -l "$ROOTFS_DEVICE"
