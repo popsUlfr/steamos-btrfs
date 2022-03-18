@@ -142,7 +142,7 @@ estat "Copy systemd service to set up the ext4 to btrfs conversion if needed"
 cmd mkdir -p etc/systemd/system
 cmd cp -r "$WORKDIR/etc/systemd/system/." etc/systemd/system/
 cmd mkdir -p usr/lib/steamos
-cmd cp "$WORKDIR/usr/lib/steamos/steamos-convert-home-to-btrfs" usr/lib/steamos/
+cmd cp -r "$WORKDIR/usr/lib/steamos/." usr/lib/steamos/
 cmd mkdir -p usr/lib/hwsupport
 # patch the sdcard format script to force btrfs on sd cards
 if [[ -f "usr/lib/hwsupport/format-sdcard.sh" ]]

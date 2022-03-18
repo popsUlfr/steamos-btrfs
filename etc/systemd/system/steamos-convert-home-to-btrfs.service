@@ -1,9 +1,11 @@
 [Unit]
-Description=Converts ext4 home to btrfs
+Description=Converts ext4 /home to btrfs
 Before=local-fs.target
+DefaultDependencies=no
 
 [Service]
 Type=oneshot
+RemainAfterExit=yes
 ExecStart=/usr/lib/steamos/steamos-convert-home-to-btrfs
 
 [Install]

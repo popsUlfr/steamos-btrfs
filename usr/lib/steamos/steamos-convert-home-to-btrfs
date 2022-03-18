@@ -2,33 +2,89 @@
 # -*- mode: sh; indent-tabs-mode: nil; sh-basic-offset: 4; -*-
 # vim: et sts=4 sw=4
 
-set -e
-set -u
-set -x
+set -eu
 
 HOME_DEVICE="/dev/disk/by-partsets/shared/home"
+HOME_PARTITION="/home"
 
-if [[ $(blkid -o value -s TYPE $HOME_DEVICE) != "ext4" ]]
+if [[ $(blkid -o value -s TYPE "$HOME_DEVICE") != "ext4" ]]
 then
+    echo "(100%) $HOME_PARTITION is already formatted as btrfs"
     exit 0
 fi
+echo "(  0%) Start btrfs conversion of $HOME_PARTITION..."
+umount -l "$HOME_DEVICE" &>/dev/null || true
 # Make sure the filesystem is clean
-e2fsck -fvy $HOME_DEVICE
+echo "(  0%) Start filesystem check..."
+if ! e2fsck -fvy $HOME_DEVICE
+then
+    echo "(100%) Filesystem check error." >&2
+    exit 1
+fi
+echo "(  5%) Filesystem check done."
 # Convert to btrfs keeping label and uuid
-btrfs-convert -L --uuid copy $HOME_DEVICE
-mount -o rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag $HOME_DEVICE /home
+echo "(  5%) Start btrfs conversion..."
+if ! btrfs-convert -L --uuid copy $HOME_DEVICE
+then
+    echo "(100%) Btrfs conversion error." >&2
+    exit 1
+fi
+echo "( 40%) Btrfs conversion done."
+if ! mount -o rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag "$HOME_DEVICE" "$HOME_PARTITION"
+then
+    echo "(100%) Mount error." >&2
+    exit 1
+fi
 # Remove the original metadata
-btrfs subvolume delete /home/ext2_saved
+echo "( 40%) Remove ext2_saved."
+if ! btrfs subvolume delete "$HOME_PARTITION"/ext2_saved
+then
+    echo "(100%) Subvolume delete ext2_saved error." >&2
+    umount -l "$HOME_DEVICE" || true
+    exit 1
+fi
 # Not needed anymore
-rm -rf /home/lost+found
+echo "( 41%) Remove lost+found."
+rm -rf "$HOME_PARTITION"/lost+found
 # Remove the swapfile if present
-rm -f /home/swapfile
+echo "( 42%) Remove swapfile."
+rm -f "$HOME_PARTITION"/swapfile
 # Create the root subvolume @
-btrfs subvolume create /home/@
+echo "( 43%) Create root subvolume @."
+if ! btrfs subvolume create "$HOME_PARTITION"/@
+then
+    echo "(100%) Subvolume delete ext2_saved error." >&2
+    umount -l "$HOME_DEVICE" || true
+    exit 1
+fi
 # Move all existing files into the new root
-find /home -mindepth 1 -maxdepth 1 -not -name @ -exec mv -t /home/@ '{}' +
+echo "( 44%) Move all files into @..."
+if ! find "$HOME_PARTITION" -mindepth 1 -maxdepth 1 -not -name @ -exec mv -t "$HOME_PARTITION"/@ '{}' +
+then
+    echo "(100%) Move all files into @ error." >&2
+    umount -l "$HOME_DEVICE" || true
+    exit 1
+fi
+echo "( 50%) Moving all files into @ done."
 # Pass all files through the allocator, can take a while
-btrfs filesystem defrag -czstd -v -r -f /home/@
+nbfiles="$(find "$HOME_PARTITION"/@ -type f -printf '\n' | wc -l)"
+echo "( 50%) Start defragmentation on $nbfiles files..."
+i=0
+if ! stdbuf -oL btrfs filesystem defrag -czstd -v -r -f "$HOME_PARTITION"/@ | awk '{printf("( %d%%) Defragmenting %s\n",50+(NR/'"$nbfiles"'*40),$0)}'
+then
+    echo "(100%) Defragmentation error." >&2
+    umount -l "$HOME_DEVICE" || true
+    exit 1
+fi
+echo "( 90%) Defragmentation done."
 # Run balance
-btrfs balance start -m -v /home
-umount $HOME_DEVICE
+echo "( 90%) Start balance..."
+if ! btrfs balance start -m -v "$HOME_PARTITION"
+then
+    echo "(100%) Balance error." >&2
+    umount -l "$HOME_DEVICE" || true
+    exit 1
+fi
+echo "(100%) Balance done."
+umount -l "$HOME_DEVICE" || true
+echo "(100%) Btrfs conversion of $HOME_PARTITION done."

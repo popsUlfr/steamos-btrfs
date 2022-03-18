@@ -1,0 +1,14 @@
+ 
+[Unit]
+Description=Converts ext4 /home to btrfs Plymouth
+After=plymouth-start.service
+Conflicts=plymouth-quit.service
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/lib/steamos/steamos-convert-home-to-btrfs-progress
+
+[Install]
+WantedBy=local-fs-pre.target
