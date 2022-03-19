@@ -21,9 +21,8 @@ Btrfs with its transparent compression and deduplication capabilities can achiev
 ## Remaining issues and troubleshooting
 
 At this point the installer should be relatively mature and robust.
-Once the payload is installed on the next boot the Steam Deck get's stuck on the bootsplash but the conversion should succeed.
-This part needs to be ironed out still, the workaround is to leave it running a good amount of time to be sure the conversion was fulfilled.
-On the next boot it should all be working fine and the /home partition converted.
+Once the payload is installed on the next boot the Steam Deck will use tmpfs as /home and attempt the btrfs conversion on the real partition.
+Once it reboots it should all be working fine and the /home partition converted.
 This configuration has been confirmed by me to survive through updates.
 
 ## Install
