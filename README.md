@@ -16,6 +16,15 @@ Btrfs with its transparent compression and deduplication capabilities can achiev
 - Btrfs formatted SD card support
 - Btrfs formating of SD card by default
 - f2fs formatted SD card support
+- **Survives updates!**
+
+## Remaining issues and troubleshooting
+
+At this point the installer should be relatively mature and robust.
+Once the payload is installed on the next boot the Steam Deck get's stuck on the bootsplash but the conversion should succeed.
+This part needs to be ironed out still, the workaround is to leave it running a good amount of time to be sure the conversion was fulfilled.
+On the next boot it should all be working fine and the /home partition converted.
+This configuration has been confirmed by me to survive through updates.
 
 ## Install
 
@@ -82,7 +91,4 @@ TODO
 
 ## TODO
 
-- [ ] Signal btrfs conversion progress using plymouth
-- [ ] Make it more robust in many different situations
-- [ ] Test more
-- [ ] Test with real Steam Deck
+- [ ] Get the graphical conversion progress working and fix getting stuck on the next boot splash during the conversion
