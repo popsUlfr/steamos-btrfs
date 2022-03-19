@@ -5,7 +5,6 @@ DefaultDependencies=no
 
 [Service]
 Type=oneshot
-RemainAfterExit=yes
 ExecStart=/usr/lib/steamos/steamos-convert-home-to-btrfs
 
 [Install]

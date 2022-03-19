@@ -131,11 +131,11 @@ onexit+=(unrootfs)
 cmd mount "$ROOTFS_DEVICE" /mnt
 cmd btrfs property set /mnt ro false
 cd /mnt
-# patch /etc/fstab to use btrfs /home
+# patch /etc/fstab to use temporary tmpfs /home
 if [[ -f "etc/fstab" ]]
 then
-  estat "Patch /etc/fstab to use btrfs /home"
-  sed -i 's#^\(\S\+\s\+/home\s\+\)ext4\(\s\+\S\+\).*$#\1btrfs\2,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,subvol=@ 0 0#' etc/fstab
+  estat "Patch /etc/fstab to use temporary /home in tmpfs"
+  sed -i 's#^\S\+\s\+/home\s\+ext4\s\+.*$#tmpfs /home tmpfs defaults,nofail,noatime,lazytime 0 0#' etc/fstab
 fi
 # copy systemd service to set up the ext4 to btrfs conversion if needed
 estat "Copy systemd service to set up the ext4 to btrfs conversion if needed"
