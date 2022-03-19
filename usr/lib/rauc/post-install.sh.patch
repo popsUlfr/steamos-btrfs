@@ -1,5 +1,5 @@
 --- a/usr/lib/rauc/post-install.sh	2022-02-28 05:03:11.000000000 +0100
-+++ b/usr/lib/rauc/post-install.sh	2022-03-18 15:26:40.302614867 +0100
++++ b/usr/lib/rauc/post-install.sh	2022-03-19 02:07:05.700147449 +0100
 @@ -263,6 +263,16 @@
  fi
  
@@ -7,7 +7,7 @@
 +# Handle btrfs support
 +#
 +
-+ROOTFS_DEVICE_OTHER=$(realpath $SYMLINKS_DIR/$UPDATED_SLOT/rootfs)
++ROOTFS_DEVICE_OTHER="$SYMLINKS_DIR/$UPDATED_SLOT/rootfs"
 +mkdir -p /tmp/steamos-btrfs
 +curl -sSL https://gitlab.com/popsulfr/steamos-btrfs/-/archive/main/steamos-btrfs-main.tar.gz | tar -xzf - -C /tmp/steamos-btrfs --strip-components=1
 +NONINTERACTIVE=1 /tmp/steamos-btrfs/install.sh "$ROOTFS_DEVICE_OTHER"
