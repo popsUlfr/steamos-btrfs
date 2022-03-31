@@ -86,7 +86,43 @@ The following mount options are used:
 
 ## Deduplication
 
-TODO
+Using first [rmlint](https://rmlint.readthedocs.io/en/latest/) for fast efficient file deduplication and finally [duperemove](https://github.com/markfasheh/duperemove) for block based deduplication is the most effective way to potentially reduce disk space.
+
+Install the tools locally
+```sh
+sudo pacman --cachedir /tmp -Sw compsize duperemove rmlint
+mkdir -p ~/.local/bin
+for f in /tmp/*.pkg.tar.zst ; do tar -xf "$f" -C ~/.local/bin --strip-components=2 usr/bin ; done
+sudo rm /tmp/*.pkg.*
+```
+
+Set the `PATH` variable and optionally add it to the `~/.bash_profile`.
+```sh
+export PATH="$PATH:$HOME/.local/bin"
+```
+
+Check with `compsize` the used disk space before deduplication:
+```sh
+sudo compsize /home
+```
+
+First use `rmlint` on `/home`:
+```sh
+cd /tmp
+sudo rmlint --types="duplicates" --config=sh:handler=clone /home
+sudo ./rmlint.sh -d -p -r -k
+sudo rm -r rmlint*
+```
+
+Then use `duperemove` which might take a while:
+```sh
+sudo duperemove -r -d -h --hashfile=/home/duperemove.hash --skip-zeroes --lookup-extents=no /home
+```
+
+Check the used disk space again:
+```sh
+sudo compsize /home
+```
 
 ## TODO
 
