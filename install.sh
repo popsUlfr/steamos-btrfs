@@ -50,13 +50,15 @@ cmd() { showcmd "$@"; "$@"; }
 # Give the user a choice between Proceed, or Cancel (which exits this script)
 #  $1 Title
 #  $2 Text
+#  $3 OK Label
+#  $4 Cancel Label
 #
 prompt_step()
 {
   title="$1"
   msg="$2"
-  oklabel="$3"
-  cancellabel="$4"
+  oklabel="${3:-}"
+  cancellabel="${4:-}"
   if [[ "$NONINTERACTIVE" -ne 1 ]]
   then
     #Parameterable prompt
