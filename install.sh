@@ -9,6 +9,7 @@ ROOTFS_DEVICE="${1:-/dev/disk/by-partsets/self/rootfs}"
 HOME_DEVICE="/dev/disk/by-partsets/shared/home"
 PKGS=(f2fs-tools reiserfsprogs)
 NONINTERACTIVE="${NONINTERACTIVE:-0}"
+NOAUTOUPDATE="${NOAUTOUPDATE:-0}"
 
 die() { echo >&2 "!! $*"; exit 1; }
 readvar() { IFS= read -r -d '' "$1" || true; }
@@ -54,9 +55,18 @@ prompt_step()
 {
   title="$1"
   msg="$2"
+  oklabel="$3"
+  cancellabel="$4"
   if [[ "$NONINTERACTIVE" -ne 1 ]]
   then
-    zenity --title "$title" --question --ok-label "Proceed" --cancel-label "Cancel" --no-wrap --text "$msg" || exit 1
+    #Parameterable prompt
+    if [[ -n "${oklabel}" ]] && [[ -n "${cancellabel}" ]]; then
+      zenity --title "$title" --question --ok-label "${oklabel}" --cancel-label "${cancellabel}" --no-wrap --text "$msg"
+      return $?
+    else
+      zenity --title "$title" --question --ok-label "Proceed" --cancel-label "Cancel" --no-wrap --text "$msg" || exit 1
+    fi
+
   else
     ewarn "$title"
     ewarn "$msg"
@@ -118,6 +128,14 @@ factory_pacman()
 }
 
 prompt_step "Install Btrfs /home converter" "This action will install the Btrfs payload.\nThis will migrate your home partition to btrfs on the next boot.\n\nThis cannot be undone.\n\nChoose Proceed only if you wish to go ahead with this, in the worst case a reimage will reset the state."
+
+# determine if the user wants to automatically pull updates from gitlab
+if [[ "$NONINTERACTIVE" -ne 1 ]] ; then
+  #Only update environment variable if interactive as to not overwrite it
+  prompt_step "Auto-update" "Do you wish to have the script auto-update?\n This will automatically fetch the script bundle from gitlab when steamOS performs an update" "Enable Auto-update" "Disable Auto-update"
+  NOAUTOUPDATE=$?
+fi
+
 # patch the recovery install script to support btrfs
 cd /
 if [[ -f "home/deck/tools/repair_device.sh" ]]
@@ -131,6 +149,12 @@ unrootfs() { cmd btrfs property set /mnt ro true || true; cmd umount -l "$ROOTFS
 onexit+=(unrootfs)
 cmd mount "$ROOTFS_DEVICE" /mnt
 cmd btrfs property set /mnt ro false
+if [[ $NOAUTOUPDATE -eq 1 ]] ; then
+  estat "Auto-update disabled"
+  mkdir -p /mnt/usr/share/steamos-btrfs/
+  touch /mnt/usr/share/steamos-btrfs/disableautoupdate
+  cp -a "$WORKDIR/." /mnt/usr/share/steamos-btrfs/
+fi
 cd /mnt
 # patch /etc/fstab to use temporary tmpfs /home
 if [[ -f "etc/fstab" ]]
