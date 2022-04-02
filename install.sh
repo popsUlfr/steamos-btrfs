@@ -63,8 +63,12 @@ prompt_step()
   then
     #Parameterable prompt
     if [[ -n "${oklabel}" ]] && [[ -n "${cancellabel}" ]]; then
-      zenity --title "$title" --question --ok-label "${oklabel}" --cancel-label "${cancellabel}" --no-wrap --text "$msg"
-      return $?
+      if zenity --title "$title" --question --ok-label "${oklabel}" --cancel-label "${cancellabel}" --no-wrap --text "$msg"
+      then
+        return 0
+      else
+        return 1
+      fi
     else
       zenity --title "$title" --question --ok-label "Proceed" --cancel-label "Cancel" --no-wrap --text "$msg" || exit 1
     fi
@@ -142,8 +146,12 @@ prompt_step "Install Btrfs /home converter" "This action will install the Btrfs 
 # determine if the user wants to automatically pull updates from gitlab
 if [[ "$NONINTERACTIVE" -ne 1 ]] ; then
   #Only update environment variable if interactive as to not overwrite it
-  prompt_step "Auto-update" "Do you wish to have the script auto-update?\n This will automatically fetch the script bundle from gitlab when steamOS performs an update" "Enable Auto-update" "Disable Auto-update"
-  NOAUTOUPDATE=$?
+  if prompt_step "Auto-update" "Do you wish to have the script auto-update?\n This will automatically fetch the script bundle from gitlab when steamOS performs an update" "Enable Auto-update" "Disable Auto-update"
+  then
+    NOAUTOUPDATE=0
+  else
+    NOAUTOUPDATE=1
+  fi
 fi
 
 # patch the recovery install script to support btrfs
