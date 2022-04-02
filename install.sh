@@ -112,7 +112,15 @@ fi
 
 epatch()
 {
-  patch --dry-run -Rlfsp1 -i "$1" &>/dev/null || cmd patch -Nlfp1 -i "$1"
+  for p in "$1"{,.old.*}
+  do
+    if [[ -f "$p" ]] && patch --dry-run -Rlfsp1 -i "$p" &>/dev/null
+    then
+        patch --no-backup-if-mismatch -Rlfsp1 -i "$p"
+        break
+    fi
+  done
+  cmd patch --no-backup-if-mismatch -Nlfp1 -i "$1"
 }
 
 factory_pacman()
