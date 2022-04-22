@@ -126,7 +126,15 @@ epatch()
         break
     fi
   done
-  cmd patch --no-backup-if-mismatch -Nlfp1 -i "$1"
+  for p in "$1"{,.old.*}
+  do
+    if [[ -f "$p" ]] && patch --dry-run -Nlfsp1 -i "$p" &>/dev/null
+    then
+        cmd patch --no-backup-if-mismatch -Nlfp1 -i "$p"
+        return 0
+    fi
+  done
+  return 1
 }
 
 factory_pacman()
@@ -159,7 +167,9 @@ cd /
 if [[ -f "home/deck/tools/repair_device.sh" ]]
 then
   estat "Patching /home/deck/tools/repair_device.sh"
-  epatch "$WORKDIR/home/deck/tools/repair_device.sh.patch"
+  if ! epatch "$WORKDIR/home/deck/tools/repair_device.sh.patch" ; then
+    ewarn "Failure patching /home/deck/tools/repair_device.sh"
+  fi
 fi
 # mount rootfs and make it writable
 estat "Mount '$ROOTFS_DEVICE' and make it writable"
