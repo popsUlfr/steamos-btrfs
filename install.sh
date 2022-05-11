@@ -3,13 +3,27 @@
 # vim: et sts=2 sw=2
 # Using parts of /home/deck/tools/repair_Device.sh
 set -eu
+IFS=$'\n'
 
-WORKDIR="$(readlink -f "$(dirname "$0")")"
+WORKDIR="$(realpath "$(dirname "$0")")"
 ROOTFS_DEVICE="${1:-/dev/disk/by-partsets/self/rootfs}"
+ROOTFS_MOUNTPOINT="/mnt"
 HOME_DEVICE="/dev/disk/by-partsets/shared/home"
+HOME_MOUNTPOINT="/home"
 PKGS=(f2fs-tools reiserfsprogs)
 NONINTERACTIVE="${NONINTERACTIVE:-0}"
 NOAUTOUPDATE="${NOAUTOUPDATE:-0}"
+
+if [[ -f /etc/default/steamos-btrfs ]]
+then
+  source /etc/default/steamos-btrfs
+elif [[ -f "$WORKDIR"/etc/default/steamos-btrfs ]]
+then
+  source "$WORKDIR"/etc/default/steamos-btrfs
+fi
+
+HOME_MOUNT_OPTS="${STEAMOS_BTRFS_HOME_MOUNT_OPTS:-defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag}"
+HOME_MOUNT_SUBVOL="${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL:-@}"
 
 die() { echo >&2 "!! $*"; exit 1; }
 readvar() { IFS= read -r -d '' "$1" || true; }
@@ -91,11 +105,15 @@ prompt_reboot()
 onexit=()
 exithandler() {
   cd /
+  onexit_rev=()
   for func in "${onexit[@]}"; do
+    onexit_rev=("$func" "${onexit_rev[@]}")
+  done
+  for func in "${onexit_rev[@]}"; do
     "$func" || true
   done
 }
-trap exithandler EXIT
+trap exithandler EXIT SIGINT SIGQUIT SIGTERM
 
 help()
 {
@@ -161,6 +179,61 @@ if [[ "$NONINTERACTIVE" -ne 1 ]] ; then
     NOAUTOUPDATE=1
   fi
 fi
+
+# NEW STUFF
+
+# mount rootfs and make it writable
+estat "Mount '$ROOTFS_DEVICE' on '$ROOTFS_MOUNTPOINT' and make it writable"
+
+cmd mount "$ROOTFS_DEVICE" "$ROOTFS_MOUNTPOINT"
+exit_rootfs_umount() { cmd umount -l "$ROOTFS_MOUNTPOINT" || true }
+onexit+=(exit_rootfs_umount)
+
+cmd btrfs property set "$ROOTFS_MOUNTPOINT" ro false
+exit_rootfs_ro() { cmd btrfs property set "$ROOTFS_MOUNTPOINT" ro true || true }
+onexit+=(exit_rootfs_ro)
+
+cd "$ROOTFS_MOUNTPOINT"
+
+# patch /etc/fstab to use temporary tmpfs /home
+if [[ -f "etc/fstab" ]]
+then
+  if [[ ! -f "etc/fstab.orig" ]]
+  then
+    cmd cp -a "etc/fstab"{,.orig}
+  fi
+  exit_fstab_orig() { cmd mv -vf "$ROOTFS_MOUNTPOINT/etc/fstab"{.orig,} || true }
+  onexit+=(exit_fstab_orig)
+  if [[ "$(blkid -o value -s TYPE "$HOME_DEVICE")" != "ext4" ]]
+  then
+    estat "Patch /etc/fstab to use btrfs for $HOME_MOUNTPOINT"
+    sed -i 's#^\S\+\s\+'"$HOME_MOUNTPOINT"'\s\+\(ext4\|tmpfs\)\s\+.*$#'"$HOME_DEVICE"' '"$HOME_MOUNTPOINT"' btrfs '"${HOME_MOUNT_OPTS}"',subvol='"${HOME_MOUNT_SUBVOL}"' 0 0#' etc/fstab
+  else
+    estat "Patch /etc/fstab to use temporary $HOME_MOUNTPOINT in tmpfs"
+    sed -i 's#^\S\+\s\+'"$HOME_MOUNTPOINT"'\s\+ext4\s\+.*$#tmpfs '"$HOME_MOUNTPOINT"' tmpfs defaults,nofail,noatime,lazytime 0 0#' etc/fstab
+  fi
+fi
+
+patched_files=()
+exit_patches_orig() { for pf in "${patched_files[@]}" ; do cmd mv -vf "$pf"{.orig,} || true ; done }
+onexit+=(exit_patches_orig)
+for p in $(find "$WORKDIR"/{etc,home,usr} -type f -name '*.patch')
+do
+  pf="$(realpath --relative-to="$WORKDIR" "${p%.*}")"
+  if [[ -f "$pf" ]]
+  then
+    if [[ ! -f "$pf.orig" ]]
+    then
+      cmd cp -a "$pf"{,.orig}
+    fi
+    patched_files+=("$ROOTFS_MOUNTPOINT/$pf")
+    epatch "$p"
+  fi
+done
+
+find "$WORKDIR"/{etc,home,usr} -type f,l -not -name '*.patch*' -exec realpath --relative-to="$WORKDIR" '{}' + | \
+  xargs -d'\n' tar -cf - -C "$WORKDIR" | tar -xf -
+
 
 # patch the recovery install script to support btrfs
 cd /

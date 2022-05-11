@@ -5,15 +5,22 @@
 set -eu
 
 HOME_DEVICE="/dev/disk/by-partsets/shared/home"
-HOME_PARTITION="/home"
+HOME_MOUNTPOINT="/home"
 ROOTFS_DEVICE="/dev/disk/by-partsets/self/rootfs"
+
+if [[ -f /etc/default/steamos-btrfs ]]
+then
+    source /etc/default/steamos-btrfs
+fi
+HOME_MOUNT_OPTS="${STEAMOS_BTRFS_HOME_MOUNT_OPTS:-defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag}"
+HOME_MOUNT_SUBVOL="${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL:-@}"
 
 if [[ $(blkid -o value -s TYPE "$HOME_DEVICE") != "ext4" ]]
 then
-    echo "(100%) $HOME_PARTITION is already formatted as btrfs"
+    echo "(100%) $HOME_MOUNTPOINT is already formatted as btrfs"
     exit 0
 fi
-echo "(  0%) Start btrfs conversion of $HOME_PARTITION..."
+echo "(  0%) Start btrfs conversion of $HOME_MOUNTPOINT..."
 umount -l "$HOME_DEVICE" &>/dev/null || true
 # Make sure the filesystem is clean
 echo "(  0%) Start filesystem check..."
@@ -42,7 +49,7 @@ then
     umount -l /mnt || true
     exit 1
 fi
-sed -i 's#^\S\+\s\+/home\s\+.*$#/dev/disk/by-partsets/shared/home /home btrfs defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,subvol=@ 0 0#' /mnt/etc/fstab
+sed -i 's#^\S\+\s\+'"${HOME_MOUNTPOINT}"'\s\+.*$#'"${HOME_DEVICE}"' '"${HOME_MOUNTPOINT}"' btrfs '"${HOME_MOUNT_OPTS}"',subvol='"${HOME_MOUNT_SUBVOL}"' 0 0#' /mnt/etc/fstab
 if ! btrfs property set /mnt ro true
 then
     echo "(100%) Set readonly true error." >&2
@@ -50,62 +57,62 @@ then
     exit 1
 fi
 umount -l /mnt || true
-if ! mount -o rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag "$HOME_DEVICE" "$HOME_PARTITION"
+if ! mount -o "${HOME_MOUNT_OPTS}" "$HOME_DEVICE" "$HOME_MOUNTPOINT"
 then
     echo "(100%) Mount error." >&2
     exit 1
 fi
 # Remove the original metadata
 echo "( 40%) Remove ext2_saved."
-if ! btrfs subvolume delete "$HOME_PARTITION"/ext2_saved
+if ! btrfs subvolume delete "$HOME_MOUNTPOINT"/ext2_saved
 then
     echo "(100%) Subvolume delete ext2_saved error." >&2
-    umount -l "$HOME_PARTITION" || true
+    umount -l "$HOME_MOUNTPOINT" || true
     exit 1
 fi
 # Not needed anymore
 echo "( 41%) Remove lost+found."
-rm -rf "$HOME_PARTITION"/lost+found
+rm -rf "$HOME_MOUNTPOINT"/lost+found
 # Remove the swapfile if present
 echo "( 42%) Remove swapfile."
-rm -f "$HOME_PARTITION"/swapfile
-# Create the root subvolume @
-echo "( 43%) Create root subvolume @."
-if ! btrfs subvolume create "$HOME_PARTITION"/@
+rm -f "$HOME_MOUNTPOINT"/swapfile
+# Create the root subvolume ${HOME_MOUNT_SUBVOL}
+echo "( 43%) Create root subvolume ${HOME_MOUNT_SUBVOL}."
+if ! btrfs subvolume create "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL"
 then
     echo "(100%) Subvolume delete ext2_saved error." >&2
-    umount -l "$HOME_PARTITION" || true
+    umount -l "$HOME_MOUNTPOINT" || true
     exit 1
 fi
 # Move all existing files into the new root
-echo "( 44%) Move all files into @..."
-if ! find "$HOME_PARTITION" -mindepth 1 -maxdepth 1 -not -name @ -exec mv -t "$HOME_PARTITION"/@ '{}' +
+echo "( 44%) Move all files into ${HOME_MOUNT_SUBVOL}..."
+if ! find "$HOME_MOUNTPOINT" -mindepth 1 -maxdepth 1 -not -name "$HOME_MOUNT_SUBVOL" -exec mv -t "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL" '{}' +
 then
-    echo "(100%) Move all files into @ error." >&2
-    umount -l "$HOME_PARTITION" || true
+    echo "(100%) Move all files into ${HOME_MOUNT_SUBVOL} error." >&2
+    umount -l "$HOME_MOUNTPOINT" || true
     exit 1
 fi
-echo "( 50%) Moving all files into @ done."
+echo "( 50%) Moving all files into ${HOME_MOUNT_SUBVOL} done."
 # Pass all files through the allocator, can take a while
-nbfiles="$(find "$HOME_PARTITION"/@ -type f -printf '\n' | wc -l)"
+nbfiles="$(find "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL" -type f -printf '\n' | wc -l)"
 echo "( 50%) Start defragmentation on $nbfiles files..."
 i=0
-if ! stdbuf -oL btrfs filesystem defrag -czstd -v -r -f "$HOME_PARTITION"/@ | awk '{printf("( %d%%) Defragmenting %s\n",50+(NR/'"$nbfiles"'*40),$0)}'
+if ! stdbuf -oL btrfs filesystem defrag -czstd -v -r -f "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL" | awk '{printf("( %d%%) Defragmenting %s\n",50+(NR/'"$nbfiles"'*40),$0)}'
 then
     echo "(100%) Defragmentation error." >&2
-    umount -l "$HOME_PARTITION" || true
+    umount -l "$HOME_MOUNTPOINT" || true
     exit 1
 fi
 echo "( 90%) Defragmentation done."
 # Run balance
 echo "( 90%) Start balance..."
-if ! btrfs balance start -m -v "$HOME_PARTITION"
+if ! btrfs balance start -m -v "$HOME_MOUNTPOINT"
 then
     echo "(100%) Balance error." >&2
-    umount -l "$HOME_PARTITION" || true
+    umount -l "$HOME_MOUNTPOINT" || true
     exit 1
 fi
 echo "(100%) Balance done."
-umount -l "$HOME_PARTITION" || true
-echo "(100%) Btrfs conversion of $HOME_PARTITION done."
+umount -l "$HOME_MOUNTPOINT" || true
+echo "(100%) Btrfs conversion of $HOME_MOUNTPOINT done."
 systemctl reboot
