@@ -235,7 +235,7 @@ exit_patches_orig() { for pf in "${patched_files[@]}" ; do cmd mv -vf "$pf"{.ori
 onexiterr=(exit_patches_orig "${onexiterr[@]}")
 find "$WORKDIR"/{etc,home,usr} -type f -name '*.patch' -print0 | while IFS= read -r -d '' p
 do
-  pf="$(realpath --relative-to="$WORKDIR" "${p%.*}")"
+  pf="$(realpath -s --relative-to="$WORKDIR" "${p%.*}")"
   if [[ -f "$pf" ]]
   then
     if [[ ! -f "$pf.orig" ]]
@@ -251,14 +251,14 @@ done
 
 estat "Copy needed files"
 exit_file_copy() {
-  find "$WORKDIR"/{etc,home,usr} -type f,l -not -name '*.patch*' -exec realpath -z --relative-to="$WORKDIR" '{}' + | while IFS= read -r -d '' p
+  find "$WORKDIR"/{etc,home,usr} -type f,l -not -name '*.patch*' -exec realpath -s -z --relative-to="$WORKDIR" '{}' + | while IFS= read -r -d '' p
   do
     cmd rm -f "$p" || true
     cmd rmdir -p --ignore-fail-on-non-empty "$(dirname "$p")" || true
   done
 }
 onexiterr=(exit_file_copy "${onexiterr[@]}")
-find "$WORKDIR"/{etc,home,usr} -type f,l -not -name '*.patch*' -exec realpath -z --relative-to="$WORKDIR" '{}' + | \
+find "$WORKDIR"/{etc,home,usr} -type f,l -not -name '*.patch*' -exec realpath -s -z --relative-to="$WORKDIR" '{}' + | \
   xargs -0 tar -cf - -C "$WORKDIR" | tar -xvf - --no-same-owner
 
 # install the needed arch packages
