@@ -2,7 +2,7 @@
 # -*- mode: sh; indent-tabs-mode: nil; sh-basic-offset: 2; -*-
 # vim: et sts=2 sw=2
 # Using parts of /home/deck/tools/repair_Device.sh
-set -eux
+set -eu
 
 WORKDIR="$(realpath "$(dirname "$0")")"
 ROOTFS_DEVICE="${1:-/dev/disk/by-partsets/self/rootfs}"
@@ -58,6 +58,7 @@ err() {
   onexiterr=()
   if [[ "$NONINTERACTIVE" -ne 1 ]]
   then
+    zenity --error --title='Installation error occured' --text='An installation error occured, look at the log and report any issues.'
     sleep infinity
   fi
 }
