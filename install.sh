@@ -250,13 +250,14 @@ done
 
 estat "Copy needed files"
 exit_file_copy() {
-  find "$WORKDIR"/{etc,home,usr} -type f,l -not -name '*.patch*' -exec realpath --relative-to="$WORKDIR" '{}' + -print0 | \
-    xargs -0 rm -f || true
-  find "$WORKDIR"/{etc,home,usr} -type f,l -not -name '*.patch*' -exec realpath --relative-to="$WORKDIR" '{}' + -print0 | \
-    xargs -0 dirname -z | xargs -0 rmdir -p --ignore-fail-on-non-empty || true
+  find "$WORKDIR"/{etc,home,usr} -type f,l -not -name '*.patch*' -exec realpath -z --relative-to="$WORKDIR" '{}' + | while IFS= read -r -d '' p
+  do
+    cmd rm -f "$p" || true
+    cmd rmdir -p --ignore-fail-on-non-empty "$(dirname "$p")" || true
+  done
 }
 onexiterr=(exit_file_copy "${onexiterr[@]}")
-find "$WORKDIR"/{etc,home,usr} -type f,l -not -name '*.patch*' -exec realpath --relative-to="$WORKDIR" '{}' + -print0 | \
+find "$WORKDIR"/{etc,home,usr} -type f,l -not -name '*.patch*' -exec realpath -z --relative-to="$WORKDIR" '{}' + | \
   xargs -0 tar -cf - -C "$WORKDIR" | tar -xvf - --no-same-owner
 
 # install the needed arch packages
