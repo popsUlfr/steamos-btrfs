@@ -96,7 +96,6 @@ echo "( 50%) Moving all files into ${HOME_MOUNT_SUBVOL} done."
 # Pass all files through the allocator, can take a while
 nbfiles="$(find "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL" -type f -printf '\n' | wc -l)"
 echo "( 50%) Start defragmentation on $nbfiles files..."
-i=0
 if ! stdbuf -oL btrfs filesystem defrag -czstd -v -r -f "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL" | awk '{printf("( %d%%) Defragmenting %s\n",50+(NR/'"$nbfiles"'*40),$0)}'
 then
     echo "(100%) Defragmentation error." >&2
