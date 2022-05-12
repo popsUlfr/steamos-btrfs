@@ -1,0 +1,21 @@
+
+# Defines the mount options for the home partition (default: "defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag")
+STEAMOS_BTRFS_HOME_MOUNT_OPTS="defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag"
+# Defines the root subvolume of the home partition (default: "@")
+STEAMOS_BTRFS_HOME_MOUNT_SUBVOL="@"
+# Defines the filesystem to format the SD card as (default: "btrfs")
+STEAMOS_BTRFS_SDCARD_FORMAT_FS="btrfs"
+# Defines the SD card mount options for btrfs (default: "rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag")
+STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_OPTS="rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag"
+# Defines the default subvolume to mount for the SD card if present (default: "@")
+STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL="@"
+# Defines the SD card format options to pass to mkfs.btrfs (default: "-f")
+STEAMOS_BTRFS_SDCARD_BTRFS_FORMAT_OPTS="-f"
+# Defines the SD card mount options for ext4 (default: "rw,noatime,lazytime")
+STEAMOS_BTRFS_SDCARD_EXT4_MOUNT_OPTS="rw,noatime,lazytime"
+# Defines the SD card format options to pass to mkfs.ext4 (default: "-m 0 -O casefold -F")
+STEAMOS_BTRFS_SDCARD_EXT4_FORMAT_OPTS="-m 0 -O casefold -F"
+# Defines the SD card mount options for f2fs (default: "rw,noatime,lazytime,compress_algorithm=zstd,compress_chksum,whint_mode=fs-based,atgc,gc_merge")
+STEAMOS_BTRFS_SDCARD_F2FS_MOUNT_OPTS="rw,noatime,lazytime,compress_algorithm=zstd,compress_chksum,whint_mode=fs-based,atgc,gc_merge"
+# Defines the SD card format options to pass to mkfs.f2fs (default: "-O encrypt,extra_attr,inode_checksum,sb_checksum,casefold,compression -C utf8 -f")
+STEAMOS_BTRFS_SDCARD_F2FS_FORMAT_OPTS="-O encrypt,extra_attr,inode_checksum,sb_checksum,casefold,compression -C utf8 -f"
