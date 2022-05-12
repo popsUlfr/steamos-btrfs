@@ -2,8 +2,7 @@
 # -*- mode: sh; indent-tabs-mode: nil; sh-basic-offset: 2; -*-
 # vim: et sts=2 sw=2
 # Using parts of /home/deck/tools/repair_Device.sh
-set -eu
-IFS=$'\n'
+set -eux
 
 WORKDIR="$(realpath "$(dirname "$0")")"
 ROOTFS_DEVICE="${1:-/dev/disk/by-partsets/self/rootfs}"
@@ -212,6 +211,7 @@ if [[ -f "etc/fstab" ]]
 then
   if [[ ! -f "etc/fstab.orig" ]]
   then
+    estat "Backing up '/etc/fstab' to '/etc/fstab.orig'"
     cmd cp -a "etc/fstab"{,.orig}
   fi
   exit_fstab_orig() { cmd mv -vf "etc/fstab"{.orig,} || true ; }
@@ -226,6 +226,9 @@ then
   fi
 fi
 
+# patch existing files
+estat "Patching existing files"
+
 patched_files=()
 exit_patches_orig() { for pf in "${patched_files[@]}" ; do cmd mv -vf "$pf"{.orig,} || true ; done ; }
 onexiterr=(exit_patches_orig "${onexiterr[@]}")
@@ -236,9 +239,11 @@ do
   then
     if [[ ! -f "$pf.orig" ]]
     then
+      estat "Backing up '/$pf' to '/$pf.orig'"
       cmd cp -a "$pf"{,.orig}
     fi
     patched_files+=("$pf")
+    estat "Patching '/$pf'"
     epatch "$p"
   fi
 done
@@ -275,7 +280,7 @@ exit_pacman_cache
 estat "Synchronize the /var partition with the new pacman state if needed"
 exit_var() { if [[ -d "$VAR_MOUNTPOINT" ]]; then cmd umount -l "$VAR_MOUNTPOINT" || true; cmd rmdir "$VAR_MOUNTPOINT" || true; fi; }
 onexiterr=(exit_var "${onexiterr[@]}")
-cmd mkdir -p "$VAR_MOUNTPOINT"onexiterr
+cmd mkdir -p "$VAR_MOUNTPOINT"
 cmd mount "$(dirname "$ROOTFS_DEVICE")/var" "$VAR_MOUNTPOINT"
 if [[ -d "$VAR_MOUNTPOINT"/lib/pacman ]]
 then
