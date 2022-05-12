@@ -229,7 +229,6 @@ fi
 patched_files=()
 exit_patches_orig() { for pf in "${patched_files[@]}" ; do cmd mv -vf "$pf"{.orig,} || true ; done ; }
 onexiterr=(exit_patches_orig "${onexiterr[@]}")
-#for p in $(find "$WORKDIR"/{etc,home,usr} -type f -name '*.patch')
 find "$WORKDIR"/{etc,home,usr} -type f -name '*.patch' -print0 | while IFS= read -r -d '' p
 do
   pf="$(realpath --relative-to="$WORKDIR" "${p%.*}")"
