@@ -51,6 +51,7 @@ onexiterr=()
 err() {
   echo >&2
   eerr "Installation error occured, see above and restart process."
+  estat "Cleaning up"
   for func in "${onexiterr[@]}"
   do
     "$func" || true
@@ -67,6 +68,7 @@ trap err ERR
 quit() {
   echo >&2
   ewarn "Quit signal received."
+  estat "Cleaning up"
   for func in "${onexiterr[@]}"
   do
     "$func" || true
@@ -122,6 +124,7 @@ prompt_reboot()
 
 onexit=()
 exithandler() {
+  estat "Cleaning up"
   for func in "${onexit[@]}"; do
     "$func" || true
   done
