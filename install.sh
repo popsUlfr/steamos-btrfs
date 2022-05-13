@@ -357,9 +357,9 @@ fi
 
 if [[ "$NOAUTOUPDATE" -eq 1 ]] ; then
   estat "Auto-update disabled"
-  mkdir -p usr/share/steamos-btrfs
-  tar -cf - -C "$WORKDIR" --exclude=.git . | tar -xf - --no-same-owner -C usr/share/steamos-btrfs
-  touch usr/share/steamos-btrfs/disableautoupdate
+  cmd mkdir -p usr/share/steamos-btrfs
+  tar -cf - -C "$WORKDIR" --exclude=.git . | tar -xvf - --no-same-owner -C usr/share/steamos-btrfs
+  cmd touch usr/share/steamos-btrfs/disableautoupdate
 fi
 
 exithandler
