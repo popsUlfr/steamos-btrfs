@@ -171,7 +171,7 @@ then
           fi
       done
   fi
-  exec sudo "$0" "$@"
+  exec sudo -A "$0" "$@"
 fi
 
 epatch()
