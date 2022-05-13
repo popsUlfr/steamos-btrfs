@@ -249,6 +249,7 @@ onexiterr=(exit_patches_orig "${onexiterr[@]}")
 find "$WORKDIR/files" -type f -name '*.patch' -print0 | while IFS= read -r -d '' p
 do
   pf="$(realpath -s --relative-to="$WORKDIR/files" "${p%.*}")"
+  # /home patches use the current root
   if [[ "$pf" =~ ^home/ ]]
   then
     pf="/$pf"
@@ -260,8 +261,14 @@ do
       estat "Backing up '/$pf' to '/$pf.orig'"
       cmd cp -a "$pf"{,.orig}
     fi
-    estat "Patching '/$pf'"
-    epatch "$p"
+    if [[ "$pf" =~ ^/ ]]
+    then
+      estat "Patching '$pf'"
+      (cd / ; epatch "$p")
+    else
+      estat "Patching '/$pf'"
+      epatch "$p"
+    fi
   fi
 done
 
