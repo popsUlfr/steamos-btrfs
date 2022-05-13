@@ -284,6 +284,10 @@ onexiterr=(exit_file_copy "${onexiterr[@]}")
 find "$WORKDIR/files" -type f,l -not -name '*.patch*' -exec realpath -s -z --relative-to="$WORKDIR/files" '{}' + | \
   xargs -0 tar -cf - -C "$WORKDIR/files" | tar -xvf - --no-same-owner
 
+# try to remount /etc overlay to refresh the lowerdir otherwise the files look corrupted
+estat "Remount /etc overlay to refresh the installed files"
+cmd mount -o remount /etc || true
+
 # install the needed arch packages
 estat "Install the needed arch packages: ${PKGS[*]}"
 exit_pacman_cache() { if [[ -d /tmp/pacman-cache ]]; then cmd rm -rf /tmp/pacman-cache; fi; }
