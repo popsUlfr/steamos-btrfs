@@ -145,7 +145,30 @@ EOD
 
 if [[ "$EUID" -ne 0 ]]
 then
-  help
+  if [[ "$NONINTERACTIVE" -eq 1 ]]
+  then
+    eerr "Please run as root."
+    exit 1
+  fi
+  # not root, ask for password if needed
+  if [[ -z "${SUDO_ASKPASS:-}" ]]
+  then
+      for ap in ksshaskpass ssh-askpass zenity
+      do
+          if apc="$(command -v "$ap")"
+          then
+              if [[ "$ap" = "zenity" ]]
+              then
+                echo -e '#!/bin/sh\nexec zenity --password --title="$1"' > /tmp/zenity-askpass
+                chmod +x /tmp/zenity-askpass
+                apc="/tmp/zenity-askpass"
+              fi
+              export SUDO_ASKPASS="$apc"
+              break
+          fi
+      done
+  fi
+  exec sudo "$0" "$@"
 fi
 
 epatch()
