@@ -17,9 +17,9 @@ NOAUTOUPDATE="${NOAUTOUPDATE:-0}"
 if [[ -f /etc/default/steamos-btrfs ]]
 then
   source /etc/default/steamos-btrfs
-elif [[ -f "$WORKDIR"/etc/default/steamos-btrfs ]]
+elif [[ -f "$WORKDIR/files/etc/default/steamos-btrfs" ]]
 then
-  source "$WORKDIR"/etc/default/steamos-btrfs
+  source "$WORKDIR/files/etc/default/steamos-btrfs"
 fi
 
 HOME_MOUNT_OPTS="${STEAMOS_BTRFS_HOME_MOUNT_OPTS:-defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag}"
@@ -230,12 +230,25 @@ fi
 # patch existing files
 estat "Patching existing files"
 
-patched_files=()
-exit_patches_orig() { for pf in "${patched_files[@]}" ; do cmd mv -vf "$pf"{.orig,} || true ; done ; }
+exit_patches_orig() {
+  find "$WORKDIR/files" -type f -name '*.patch' -print0 | while IFS= read -r -d '' p
+  do
+    pf="$(realpath -s --relative-to="$WORKDIR/files" "${p%.*}")"
+    if [[ "$pf" =~ ^home/ ]]
+    then
+      pf="/$pf"
+    fi
+    cmd mv -vf "$pf"{.orig,} || true
+  done
+}
 onexiterr=(exit_patches_orig "${onexiterr[@]}")
-find "$WORKDIR"/{etc,home,usr} -type f -name '*.patch' -print0 | while IFS= read -r -d '' p
+find "$WORKDIR/files" -type f -name '*.patch' -print0 | while IFS= read -r -d '' p
 do
-  pf="$(realpath -s --relative-to="$WORKDIR" "${p%.*}")"
+  pf="$(realpath -s --relative-to="$WORKDIR/files" "${p%.*}")"
+  if [[ "$pf" =~ ^home/ ]]
+  then
+    pf="/$pf"
+  fi
   if [[ -f "$pf" ]]
   then
     if [[ ! -f "$pf.orig" ]]
@@ -243,7 +256,6 @@ do
       estat "Backing up '/$pf' to '/$pf.orig'"
       cmd cp -a "$pf"{,.orig}
     fi
-    patched_files+=("$pf")
     estat "Patching '/$pf'"
     epatch "$p"
   fi
@@ -251,15 +263,15 @@ done
 
 estat "Copy needed files"
 exit_file_copy() {
-  find "$WORKDIR"/{etc,home,usr} -type f,l -not -name '*.patch*' -exec realpath -s -z --relative-to="$WORKDIR" '{}' + | while IFS= read -r -d '' p
+  find "$WORKDIR/files" -type f,l -not -name '*.patch*' -exec realpath -s -z --relative-to="$WORKDIR/files" '{}' + | while IFS= read -r -d '' p
   do
     cmd rm -f "$p" || true
     cmd rmdir -p --ignore-fail-on-non-empty "$(dirname "$p")" || true
   done
 }
 onexiterr=(exit_file_copy "${onexiterr[@]}")
-find "$WORKDIR"/{etc,home,usr} -type f,l -not -name '*.patch*' -exec realpath -s -z --relative-to="$WORKDIR" '{}' + | \
-  xargs -0 tar -cf - -C "$WORKDIR" | tar -xvf - --no-same-owner
+find "$WORKDIR/files" -type f,l -not -name '*.patch*' -exec realpath -s -z --relative-to="$WORKDIR/files" '{}' + | \
+  xargs -0 tar -cf - -C "$WORKDIR/files" | tar -xvf - --no-same-owner
 
 # install the needed arch packages
 estat "Install the needed arch packages: ${PKGS[*]}"
@@ -304,7 +316,7 @@ fi
 if [[ "$NOAUTOUPDATE" -eq 1 ]] ; then
   estat "Auto-update disabled"
   mkdir -p usr/share/steamos-btrfs
-  tar -cf - -C "$WORKDIR" . | tar -xf - --no-same-owner -C usr/share/steamos-btrfs
+  tar -cf - -C "$WORKDIR" --exclude=.git . | tar -xf - --no-same-owner -C usr/share/steamos-btrfs
   touch usr/share/steamos-btrfs/disableautoupdate
 fi
 
