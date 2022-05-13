@@ -347,7 +347,7 @@ exit_var
 # determine if the user wants to automatically pull updates from gitlab
 if [[ "$NONINTERACTIVE" -ne 1 ]] ; then
   #Only update environment variable if interactive as to not overwrite it
-  if prompt_step "Auto-update" "Do you wish to have the script auto-update?\n This will automatically fetch the latest script bundle from gitlab when SteamOS performs an update" "Enable Auto-update" "Disable Auto-update"
+  if prompt_step "Auto-update" "Do you wish to have the script auto-update?\n This will automatically fetch the latest script bundle from gitlab when SteamOS performs an update\n(Recommended to leave enabled in case of needed future changes)" "Enable Auto-update" "Disable Auto-update"
   then
     NOAUTOUPDATE=0
   else
