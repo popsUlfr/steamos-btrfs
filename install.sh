@@ -174,6 +174,10 @@ epatch()
         return 0
     fi
   done
+  if cmd patch --no-backup-if-mismatch -Nlfp1 -i "$p"
+  then
+    return 0
+  fi
   return 1
 }
 
