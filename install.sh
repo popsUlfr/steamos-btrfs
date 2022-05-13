@@ -113,7 +113,7 @@ prompt_step()
 
 prompt_reboot()
 {
-  prompt_step "Action Complete" "${1}\n\nChoose Proceed to reboot the Steam Deck now, or Cancel to stay." || exit 1
+  prompt_step "Installation Complete" "${1}\n\nChoose Proceed to reboot the Steam Deck now, or Cancel to stay.\nThe conversion of the /home partition will happen on the next reboot. Once it is done, it will reboot just one more time." || exit 1
   if [[ "$NONINTERACTIVE" -ne 1 ]]
   then
     cmd systemctl reboot
@@ -126,6 +126,7 @@ exithandler() {
     "$func" || true
   done
   onexit=()
+  onexiterr=()
 }
 
 help()
