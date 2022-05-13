@@ -58,7 +58,7 @@ err() {
   onexiterr=()
   if [[ "$NONINTERACTIVE" -ne 1 ]]
   then
-    zenity --error --title='Installation error occured' --text='An installation error occured, look at the log and report any issues.'
+    zenity --error --title='Installation error occured' --text='An installation error occured, look at the log and report any issues.' &>/dev/null
     sleep infinity
   fi
 }
@@ -95,14 +95,14 @@ prompt_step()
   then
     #Parameterable prompt
     if [[ -n "${oklabel}" ]] && [[ -n "${cancellabel}" ]]; then
-      if zenity --title "$title" --question --ok-label "${oklabel}" --cancel-label "${cancellabel}" --no-wrap --text "$msg"
+      if zenity --title "$title" --question --ok-label "${oklabel}" --cancel-label "${cancellabel}" --no-wrap --text "$msg" &>/dev/null
       then
         return 0
       else
         return 1
       fi
     else
-      zenity --title "$title" --question --ok-label "Proceed" --cancel-label "Cancel" --no-wrap --text "$msg" || exit 1
+      zenity --title "$title" --question --ok-label "Proceed" --cancel-label "Cancel" --no-wrap --text "$msg" &>/dev/null || exit 1
     fi
 
   else
