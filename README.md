@@ -1,18 +1,18 @@
 # SteamOS 3.0 Btrfs converter
 
-This injector will install the necessary payload to keep a btrfs formatted /home even through system updates.
+This injector will install the necessary payload to keep a btrfs formatted /home even through system updates. You may also choose to only install the support for formatting and mounting of multiple filesystems for the SD cards.
 It will allow to mount btrfs, f2fs and ext4 formatted sd cards and will also force new sd cards to be formatted as btrfs by default or a user configured filesystem.
 
 Btrfs with its transparent compression and deduplication capabilities can achieve impressive storage gains but also improve loading times because of less data being read.
 
-**WARNING!!!! It will install a service that will attempt on the next boot to convert the ext4 /home partition into btrfs and depending on the already used storage this operation may fail or take a long time!**
+**WARNING!!!! If you decide to so, it will install a service that will attempt on the next boot to convert the ext4 /home partition into btrfs and depending on the already used storage this operation may fail or take a long time! (Haven't heard of cases of failed conversions so far though)**
 
 - https://wiki.archlinux.org/title/Btrfs
 - https://wiki.archlinux.org/title/F2FS
 
 ## Features
 
-- Btrfs /home conversion from ext4
+- Btrfs /home conversion from ext4 (optional)
 - Btrfs, f2fs, ext4 formatted SD card support
 - Btrfs, f2fs, ext4 formating of SD card
 - **Survives updates and branch changes!**
@@ -20,14 +20,15 @@ Btrfs with its transparent compression and deduplication capabilities can achiev
 ## Remaining issues and troubleshooting
 
 At this point the installer should be relatively mature and robust.
-Once the payload is installed on the next boot the Steam Deck will use tmpfs as /home and attempt the btrfs conversion on the real partition.
+Once the payload is installed and the conversion was greenlit by the user, on the next boot the Steam Deck will use tmpfs as /home and attempt the btrfs conversion on the real partition.
 Once it reboots it should all be working fine and the /home partition converted.
-This configuration has been confirmed by me to survive through updates.
+This configuration has been confirmed by me and others to survive through updates.
 
 ## Install
 
 **CAUTION**: there's not an easy way back if you proceed! Once the /home partition is converted, you can not go back to ext4 and keep your files.
 The original files that have been changed are backed up with the `.orig` extension. Keep in mind that they are specifically changed to allow for a btrfs `/home`.
+It is safe to revert to the original files if the btrfs conversion was not attempted.
 
 ### From SteamOS
 
@@ -57,7 +58,7 @@ Then the installation is the same as above. The repair script will be patched to
 sudo ~/tools/repair_reimage.sh
 ```
 
-#### Do you want to inject the btrfs payload into an SteamOS installation from the Recovery image ?
+#### Do you want to inject the btrfs payload into a SteamOS installation from the Recovery image ?
 
 When invoking the install script, supply the rootfs device node as first argument to prevent it from injecting into the Recovery image.
 
@@ -68,6 +69,11 @@ When invoking the install script, supply the rootfs device node as first argumen
 
 (Do the installation twice for both slots)
 
+## Updating
+
+At any time you can download the latest version and go through the installation again to enable the latest changes.
+Disabling the home conversion won't have any effect on an already converted home partition.
+
 ## Uninstall
 
 - the underlying rootfs needs to be mounted somewhere else and the readonly mode disabled
@@ -76,8 +82,8 @@ When invoking the install script, supply the rootfs device node as first argumen
 - the original files are backed up next to the new files with a `.orig` extension so you can move them back into position
   + `sudo find /mnt -type f,l -name '*.orig' -exec sh -c 'mv -vf "$1" "${1%.*}"' _ '{}' \;`
 - make sure to disable the conversion systemd services or it will attempt to convert `/home` again
-  + `sudo rm /mnt/usr/lib/systemd/system/local-fs-pre.target.wants/steamos-convert-home-to-btrfs*.service`
-- the `/home` partition will need to be force formatted back to ext4
+  + `sudo rm /mnt/usr/lib/systemd/system/*.target.wants/steamos-convert-home-to-btrfs*.service`
+- the `/home` partition will need to be force formatted back to ext4 if it has been converted to btrfs (obviously all files on it will be lost!)
   + you can edit `/etc/fstab` to mount `/home` in tmpfs for the next boot : `tmpfs /home tmpfs defaults,nofail,noatime,lazytime 0 0`
   + force format the real `/home` to ext4 : `sudo mkfs.ext4 -m 0 -O casefold -F -L home /dev/disk/by-partsets/shared/home`
   + change the line in `/etc/fstab` back to ext4 : `/dev/disk/by-partsets/shared/home /home   ext4    defaults,nofail,x-systemd.growfs 0       2`
@@ -164,3 +170,8 @@ sudo compsize /home
 ## TODO
 
 - [ ] Get some logging going during the conversion process
+- [ ] rootfs/slot user dialog selection
+- [ ] graphical progress bar during home conversion (soon!)
+- [ ] deduplication service
+- [ ] easier installer (appimage, desktop file...)
+- [ ] small helper to change fstab mount options
