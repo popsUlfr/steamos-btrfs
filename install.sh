@@ -268,7 +268,7 @@ then
   if [[ "$(blkid -o value -s TYPE "$HOME_DEVICE")" != "ext4" ]]
   then
     estat "Patch /etc/fstab to use btrfs for $HOME_MOUNTPOINT"
-    sed -i 's#^\S\+\s\+'"$HOME_MOUNTPOINT"'\s\+\(ext4\|tmpfs\)\s\+.*$#'"$HOME_DEVICE"' '"$HOME_MOUNTPOINT"' btrfs '"${HOME_MOUNT_OPTS}"',subvol='"${HOME_MOUNT_SUBVOL}"' 0 0#' etc/fstab
+    sed -i 's#^\S\+\s\+'"$HOME_MOUNTPOINT"'\s\+\(ext4\|tmpfs\|btrfs\)\s\+.*$#'"$HOME_DEVICE"' '"$HOME_MOUNTPOINT"' btrfs '"${HOME_MOUNT_OPTS}"',subvol='"${HOME_MOUNT_SUBVOL}"' 0 0#' etc/fstab
   else
     estat "Patch /etc/fstab to use temporary $HOME_MOUNTPOINT in tmpfs"
     sed -i 's#^\S\+\s\+'"$HOME_MOUNTPOINT"'\s\+ext4\s\+.*$#tmpfs '"$HOME_MOUNTPOINT"' tmpfs defaults,nofail,noatime,lazytime 0 0#' etc/fstab
