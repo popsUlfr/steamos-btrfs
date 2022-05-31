@@ -334,6 +334,9 @@ then
   cmd rm -f usr/lib/systemd/system/*.target.wants/steamos-convert-home-to-btrfs*.service || true
   cmd mkdir -p usr/share/steamos-btrfs
   cmd touch usr/share/steamos-btrfs/disableconverthome
+else
+  estat "Enable /home conversion services"
+  cmd rm -f usr/share/steamos-btrfs/disableconverthome || true
 fi
 
 # try to remount /etc overlay to refresh the lowerdir otherwise the files look corrupted
@@ -385,6 +388,9 @@ if [[ "$NOAUTOUPDATE" -eq 1 ]] ; then
   cmd mkdir -p usr/share/steamos-btrfs
   tar -cf - -C "$WORKDIR" --exclude=.git . | tar -xvf - --no-same-owner -C usr/share/steamos-btrfs
   cmd touch usr/share/steamos-btrfs/disableautoupdate
+else
+  estat "Auto-update enabled"
+  cmd rm -f usr/share/steamos-btrfs/disableautoupdate || true
 fi
 
 exithandler
