@@ -1,0 +1,38 @@
+--- stable/home/deck/tools/repair_device.sh	2022-05-05 22:19:38.000000000 +0200
++++ work/home/deck/tools/repair_device.sh	2022-05-13 11:16:10.919541928 +0200
+@@ -70,6 +70,7 @@
+ # Helper to format
+ fmt_ext4()  { [[ $# -eq 2 && -n $1 && -n $2 ]] || die; cmd sudo mkfs.ext4 -F -L "$1" "$2"; }
+ fmt_fat32() { [[ $# -eq 2 && -n $1 && -n $2 ]] || die; cmd sudo mkfs.vfat -n"$1" "$2"; }
++fmt_btrfs() { [[ $# -eq 2 && -n $1 && -n $2 ]] || die; cmd sudo mkfs.btrfs -f -L "$1" "$2"; }
+ 
+ ##
+ ## Prompt mechanics - currently using Zenity
+@@ -191,7 +192,7 @@
+     verifypart "$(diskpart $FS_EFI_B)" vfat efi-B
+     verifypart "$(diskpart $FS_VAR_A)" ext4 var-A
+     verifypart "$(diskpart $FS_VAR_B)" ext4 var-B
+-    verifypart "$(diskpart $FS_HOME)" ext4 home
++    verifypart "$(diskpart $FS_HOME)" btrfs home
+   fi
+ 
+   # clear the var partition (user data), but also if we are reinstalling the OS
+@@ -204,9 +205,15 @@
+ 
+   if [[ $writeHome = 1 ]]; then
+     estat "Creating home partition..."
+-    cmd sudo mkfs.ext4 -F -O casefold -T largefile -L home "$(diskpart $FS_HOME)"
+-    estat "Remove the reserved blocks on the home partition..."
+-    tune2fs -m 0 "$(diskpart $FS_HOME)"
++    if [[ -f /etc/default/steamos-btrfs ]]; then
++      source /etc/default/steamos-btrfs
++    fi
++    fmt_btrfs home "$(diskpart $FS_HOME)"
++    MOUNT_DIR="/mnt"
++    mkdir -p "$MOUNT_DIR"
++    mount -o "${STEAMOS_BTRFS_HOME_MOUNT_OPTS:-defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag}" "$(diskpart $FS_HOME)" "$MOUNT_DIR"
++    btrfs subvolume create "$MOUNT_DIR/${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL:-@}"
++    umount -l "$MOUNT_DIR"
+   fi
+ 
+   if [[ $writeOS = 1 ]]; then

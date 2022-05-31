@@ -1,5 +1,7 @@
---- stable/home/deck/tools/repair_device.sh	2022-05-05 22:19:38.000000000 +0200
-+++ work/home/deck/tools/repair_device.sh	2022-05-13 11:16:10.919541928 +0200
+mkfs.ext4 `-T huge` change and disableconverthome logic
+
+--- stable/home/deck/tools/repair_device.sh	2022-05-31 15:41:26.750655397 +0200
++++ work/home/deck/tools/repair_device.sh	2022-05-31 15:58:47.883716489 +0200
 @@ -70,6 +70,7 @@
  # Helper to format
  fmt_ext4()  { [[ $# -eq 2 && -n $1 && -n $2 ]] || die; cmd sudo mkfs.ext4 -F -L "$1" "$2"; }
@@ -8,31 +10,41 @@
  
  ##
  ## Prompt mechanics - currently using Zenity
-@@ -191,7 +192,7 @@
+@@ -191,7 +192,11 @@
      verifypart "$(diskpart $FS_EFI_B)" vfat efi-B
      verifypart "$(diskpart $FS_VAR_A)" ext4 var-A
      verifypart "$(diskpart $FS_VAR_B)" ext4 var-B
 -    verifypart "$(diskpart $FS_HOME)" ext4 home
-+    verifypart "$(diskpart $FS_HOME)" btrfs home
++    if [[ -f /usr/share/steamos-btrfs/disableconverthome ]]; then
++      verifypart "$(diskpart $FS_HOME)" ext4 home
++    else
++      verifypart "$(diskpart $FS_HOME)" btrfs home
++    fi
    fi
  
    # clear the var partition (user data), but also if we are reinstalling the OS
-@@ -204,9 +205,15 @@
+@@ -204,9 +209,21 @@
  
    if [[ $writeHome = 1 ]]; then
      estat "Creating home partition..."
--    cmd sudo mkfs.ext4 -F -O casefold -T largefile -L home "$(diskpart $FS_HOME)"
+-    cmd sudo mkfs.ext4 -F -O casefold -T huge -L home "$(diskpart $FS_HOME)"
 -    estat "Remove the reserved blocks on the home partition..."
 -    tune2fs -m 0 "$(diskpart $FS_HOME)"
-+    if [[ -f /etc/default/steamos-btrfs ]]; then
-+      source /etc/default/steamos-btrfs
++    if [[ -f /usr/share/steamos-btrfs/disableconverthome ]]; then
++      cmd sudo mkfs.ext4 -F -O casefold -T huge -L home "$(diskpart $FS_HOME)"
++      estat "Remove the reserved blocks on the home partition..."
++      tune2fs -m 0 "$(diskpart $FS_HOME)"
++    else
++      if [[ -f /etc/default/steamos-btrfs ]]; then
++        source /etc/default/steamos-btrfs
++      fi
++      fmt_btrfs home "$(diskpart $FS_HOME)"
++      MOUNT_DIR="/mnt"
++      mkdir -p "$MOUNT_DIR"
++      mount -o "${STEAMOS_BTRFS_HOME_MOUNT_OPTS:-defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag}" "$(diskpart $FS_HOME)" "$MOUNT_DIR"
++      btrfs subvolume create "$MOUNT_DIR/${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL:-@}"
++      umount -l "$MOUNT_DIR"
 +    fi
-+    fmt_btrfs home "$(diskpart $FS_HOME)"
-+    MOUNT_DIR="/mnt"
-+    mkdir -p "$MOUNT_DIR"
-+    mount -o "${STEAMOS_BTRFS_HOME_MOUNT_OPTS:-defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag}" "$(diskpart $FS_HOME)" "$MOUNT_DIR"
-+    btrfs subvolume create "$MOUNT_DIR/${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL:-@}"
-+    umount -l "$MOUNT_DIR"
    fi
  
    if [[ $writeOS = 1 ]]; then
