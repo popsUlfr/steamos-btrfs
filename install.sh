@@ -13,6 +13,12 @@ HOME_MOUNTPOINT="/home"
 PKGS=(f2fs-tools reiserfsprogs)
 NONINTERACTIVE="${NONINTERACTIVE:-0}"
 NOAUTOUPDATE="${NOAUTOUPDATE:-0}"
+if [[ -f /usr/share/steamos-btrfs/disableconverthome ]]
+then
+  NOCONVERTHOME="${NOCONVERTHOME:-1}"
+else
+  NOCONVERTHOME="${NOCONVERTHOME:-0}"
+fi
 
 if [[ -f /etc/default/steamos-btrfs ]]
 then
@@ -115,7 +121,7 @@ prompt_step()
 
 prompt_reboot()
 {
-  prompt_step "Installation Complete" "${1}\n\nChoose Proceed to reboot the Steam Deck now, or Cancel to stay.\nThe conversion of the /home partition will happen on the next reboot. Once it is done, it will reboot just one more time." || exit 1
+  prompt_step "Installation Complete" "${1}\n\nChoose Proceed to reboot the Steam Deck now, or Cancel to stay.\nThe conversion of the /home partition will happen on the next reboot if you selected the option. Once it is done, it will reboot just one more time." || exit 1
   if [[ "$NONINTERACTIVE" -ne 1 ]]
   then
     cmd systemctl reboot
@@ -220,7 +226,18 @@ factory_pacman()
     "$@"
 }
 
-prompt_step "Install Btrfs /home converter" "This action will install the Btrfs payload.\nThis will migrate your home partition to btrfs on the next boot.\n\nThis cannot be undone.\n\nChoose Proceed only if you wish to go ahead with this, in the worst case a reimage will reset the state."
+prompt_step "SteamOS Btrfs" "This installer will inject the Btrfs payload into the system."
+
+# ask the user if they want to convert their home partition to btrfs
+if [[ "$NONINTERACTIVE" -ne 1 ]]
+then
+  if prompt_step "Install Btrfs /home converter" "Do you wish to install the necessary files to migrate your home partition to btrfs on the next boot ?\nThis operation can not be undone once it is started!\n(mounting and formatting of SD cards with btrfs, f2fs, ext4 filesystems will still be available)" "Convert /home to btrfs" "Keep /home as ext4"
+  then
+    NOCONVERTHOME=0
+  else
+    NOCONVERTHOME=1
+  fi
+fi
 
 # mount rootfs and make it writable
 estat "Mount '$ROOTFS_DEVICE' on '$ROOTFS_MOUNTPOINT' and make it writable"
@@ -239,7 +256,7 @@ onexit=(exit_rootfs_ro "${onexit[@]}")
 cd "$ROOTFS_MOUNTPOINT"
 
 # patch /etc/fstab to use temporary tmpfs /home
-if [[ -f "etc/fstab" ]]
+if [[ "$NOCONVERTHOME" -ne 1 ]] && [[ -f "etc/fstab" ]]
 then
   if [[ ! -f "etc/fstab.orig" ]]
   then
@@ -310,6 +327,14 @@ exit_file_copy() {
 onexiterr=(exit_file_copy "${onexiterr[@]}")
 find "$WORKDIR/files" -type f,l -not -name '*.patch*' -exec realpath -s -z --relative-to="$WORKDIR/files" '{}' + | \
   xargs -0 tar -cf - -C "$WORKDIR/files" | tar -xvf - --no-same-owner
+
+if [[ "$NOCONVERTHOME" -eq 1 ]]
+then
+  estat "Disable /home conversion services"
+  cmd rm -f usr/lib/systemd/system/*.target.wants/steamos-convert-home-to-btrfs*.service || true
+  cmd mkdir -p usr/share/steamos-btrfs
+  cmd touch usr/share/steamos-btrfs/disableconverthome
+fi
 
 # try to remount /etc overlay to refresh the lowerdir otherwise the files look corrupted
 estat "Remount /etc overlay to refresh the installed files"
