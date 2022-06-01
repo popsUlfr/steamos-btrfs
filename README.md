@@ -15,6 +15,7 @@ Btrfs with its transparent compression and deduplication capabilities can achiev
 - Btrfs /home conversion from ext4 (optional)
 - Btrfs, f2fs, ext4 formatted SD card support
 - Btrfs, f2fs, ext4 formating of SD card
+- Progress dialog and logging during the home conversion!
 - **Survives updates and branch changes!**
 
 ## Remaining issues and troubleshooting
@@ -47,6 +48,8 @@ mkdir steamos-btrfs
 curl -sSL https://gitlab.com/popsulfr/steamos-btrfs/-/archive/main/steamos-btrfs-main.tar.gz | tar -xzf - -C steamos-btrfs --strip-components=1
 ./steamos-btrfs/install.sh
 ```
+
+Follow the on-screen instructions and if you decide to convert your home to btrfs, on the next boot you'll see a progress dialog.
 
 ### From the SteamOS Recovery image
 
@@ -171,7 +174,7 @@ sudo compsize /home
 
 - [ ] Get some logging going during the conversion process
 - [ ] rootfs/slot user dialog selection
-- [ ] graphical progress bar during home conversion (soon!)
+- [x] graphical progress bar during home conversion
 - [ ] deduplication service
 - [ ] easier installer (appimage, desktop file...)
 - [ ] small helper to change fstab mount options
