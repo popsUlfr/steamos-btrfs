@@ -66,7 +66,7 @@ err() {
   onexiterr=()
   if [[ "$NONINTERACTIVE" -ne 1 ]]
   then
-    zenity --error --title='Installation error occured' --text='An installation error occured, look at the log and report any issues.' &>/dev/null
+    zenity --error --title='Installation error occured' --text="An installation error occured, check the log at '${LOGFILE}' and report any issues." &>/dev/null
     sleep infinity
   fi
 }
@@ -237,7 +237,7 @@ epatch()
 
 factory_pacman()
 {
-  cmd pacman --root . \
+  if cmd pacman --root . \
     --dbpath usr/share/factory/var/lib/pacman \
     --cachedir /tmp/pacman-cache \
     --gpgdir etc/pacman.d/gnupg \
@@ -245,6 +245,11 @@ factory_pacman()
     --disable-download-timeout \
     --noconfirm \
     "$@"
+  then
+    return 0
+  else
+    return 1
+  fi
 }
 
 if mkdir -p "$(dirname "$LOGFILE")" && touch "$LOGFILE"
