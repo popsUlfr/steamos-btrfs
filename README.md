@@ -25,6 +25,8 @@ Once the payload is installed and the conversion was greenlit by the user, on th
 Once it reboots it should all be working fine and the /home partition converted.
 This configuration has been confirmed by me and others to survive through updates.
 
+A log file is created at `/var/log/steamos-btrfs.log` containing the installation and the home conversion log to review the process or help with bug reports.
+
 ## Install
 
 **CAUTION**: there's not an easy way back if you proceed! Once the /home partition is converted, you can not go back to ext4 and keep your files.
@@ -172,7 +174,7 @@ sudo compsize /home
 
 ## TODO
 
-- [ ] Get some logging going during the conversion process
+- [x] Get some logging going during the conversion process
 - [ ] rootfs/slot user dialog selection
 - [x] graphical progress bar during home conversion
 - [ ] deduplication service
