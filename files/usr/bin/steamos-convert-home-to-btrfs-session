@@ -1,0 +1,67 @@
+#!/bin/bash
+set -eu
+
+LINES_LIMIT="50"
+LINE_LIMIT="90"
+TITLE="Converting /home to btrfs"
+
+if [[ -z "$DBUS_SESSION_BUS_ADDRESS" ]]
+then
+    exec dbus-launch --exit-with-session "$0" "$@"
+fi
+
+# dark mode on
+export QT_QPA_PLATFORMTHEME=kde
+
+kwin_x11 &
+dbusref="$(kdialog --title "$TITLE" --progressbar "#### $TITLE ####")"
+qdbus $dbusref autoClose false
+qdbus $dbusref showCancelButton false
+# force fullscreen using wmctrl
+until wmctrl -r "$TITLE" -b add,fullscreen
+do
+    continue
+done
+
+lines=("#### $TITLE ####")
+lastperc="-1"
+while read -r line
+do
+    # Empty line: skip it!
+    if [[ "${#line}" -eq 0 ]]
+    then
+        continue
+    fi
+    
+    if [[ $line =~ ^\(\ *[0-9]+%\) ]]
+    then
+        perc="${line#"${line%%[!\([:space:]]*}"}"
+        perc="${perc%\%\)*}"
+        msg="${line#\(*\) }"
+        if [[ "$perc" -ne "$lastperc" ]]
+        then
+            qdbus $dbusref Set "" value "$perc"
+        fi
+        lastperc="$perc"
+        if [[ "${#msg}" -eq 0 ]] || [[ $msg =~ ^Defragmenting ]]
+        then
+            continue
+        fi
+        if [[ "${#msg}" -gt "$LINE_LIMIT" ]]
+        then
+            msg="${msg:0:$((LINE_LIMIT-3))}..."
+        fi
+        lines+=("$msg")
+    else
+        if [[ "${#line}" -gt "$LINE_LIMIT" ]]
+        then
+            line="${line:0:$((LINE_LIMIT-3))}..."
+        fi
+        lines+=(">> $line")
+    fi
+    if [[ "${#lines[@]}" -gt "$LINES_LIMIT" ]]
+    then
+        lines=("${lines[0]}" "${lines[@]:$((${#lines[@]}-LINES_LIMIT))}")
+    fi
+    qdbus $dbusref setLabelText "$(IFS=$'\n'; echo "${lines[*]}")"
+done < <(journalctl --boot --unit steamos-convert-home-to-btrfs.service --follow --output cat)

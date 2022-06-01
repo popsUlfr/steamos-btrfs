@@ -10,7 +10,7 @@ ROOTFS_MOUNTPOINT="/mnt"
 VAR_MOUNTPOINT="/tmp/var"
 HOME_DEVICE="/dev/disk/by-partsets/shared/home"
 HOME_MOUNTPOINT="/home"
-PKGS=(f2fs-tools reiserfsprogs)
+PKGS=(f2fs-tools reiserfsprogs kdialog wmctrl)
 NONINTERACTIVE="${NONINTERACTIVE:-0}"
 NOAUTOUPDATE="${NOAUTOUPDATE:-0}"
 if [[ -f /usr/share/steamos-btrfs/disableconverthome ]]

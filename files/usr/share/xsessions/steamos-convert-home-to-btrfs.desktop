@@ -1,0 +1,9 @@
+[Desktop Entry]
+Encoding=UTF-8
+Type=XSession
+Name=SteamOS Convert home to btrfs
+Comment=SteamOS Convert home to btrfs session
+Exec=steamos-convert-home-to-btrfs-session
+Icon=steamicon
+Type=Application
+DesktopNames=steamos-convert-home-to-btrfs-session

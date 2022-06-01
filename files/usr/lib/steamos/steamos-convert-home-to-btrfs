@@ -7,6 +7,7 @@ set -eu
 HOME_DEVICE="/dev/disk/by-partsets/shared/home"
 HOME_MOUNTPOINT="/home"
 ROOTFS_DEVICE="/dev/disk/by-partsets/self/rootfs"
+SDDM_CONF_FILE="/etc/sddm.conf.d/zzzz-steamos-convert-home-to-btrfs.conf"
 
 if [[ -f /etc/default/steamos-btrfs ]]
 then
@@ -15,11 +16,25 @@ fi
 HOME_MOUNT_OPTS="${STEAMOS_BTRFS_HOME_MOUNT_OPTS:-defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag}"
 HOME_MOUNT_SUBVOL="${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL:-@}"
 
+clear_sddm_conf() {
+    rm -f "$SDDM_CONF_FILE" || true
+}
+trap clear_sddm_conf SIGINT SIGQUIT SIGTERM ERR EXIT
+
 if [[ $(blkid -o value -s TYPE "$HOME_DEVICE") != "ext4" ]]
 then
+    clear_sddm_conf
+    systemd-notify --ready --status="$HOME_MOUNTPOINT is already formatted as btrfs"
     echo "(100%) $HOME_MOUNTPOINT is already formatted as btrfs"
     exit 0
 fi
+mkdir -p "$(dirname "$SDDM_CONF_FILE")"
+cat <<EOF > "$SDDM_CONF_FILE"
+[Autologin]
+Session=steamos-convert-home-to-btrfs.desktop
+User=root
+EOF
+systemd-notify --ready --status="Start btrfs conversion of $HOME_MOUNTPOINT..."
 echo "(  0%) Start btrfs conversion of $HOME_MOUNTPOINT..."
 umount -l "$HOME_DEVICE" &>/dev/null || true
 # Make sure the filesystem is clean
@@ -114,4 +129,8 @@ fi
 echo "(100%) Balance done."
 umount -l "$HOME_MOUNTPOINT" || true
 echo "(100%) Btrfs conversion of $HOME_MOUNTPOINT done."
+systemd-notify --status="Btrfs conversion of $HOME_MOUNTPOINT done."
+clear_sddm_conf
+echo "(100%) Rebooting in 4 seconds..."
+sleep 4
 systemctl reboot
