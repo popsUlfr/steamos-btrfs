@@ -5,7 +5,7 @@ LINES_LIMIT="50"
 LINE_LIMIT="90"
 TITLE="Converting /home to btrfs"
 
-if [[ -z "$DBUS_SESSION_BUS_ADDRESS" ]]
+if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]]
 then
     exec dbus-launch --exit-with-session "$0" "$@"
 fi
