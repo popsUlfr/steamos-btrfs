@@ -8,6 +8,7 @@ HOME_DEVICE="/dev/disk/by-partsets/shared/home"
 HOME_MOUNTPOINT="/home"
 ROOTFS_DEVICE="/dev/disk/by-partsets/self/rootfs"
 SDDM_CONF_FILE="/etc/sddm.conf.d/zzzz-steamos-convert-home-to-btrfs.conf"
+LOGFILE="/var/log/steamos-btrfs.log"
 
 if [[ -f /etc/default/steamos-btrfs ]]
 then
@@ -16,19 +17,57 @@ fi
 HOME_MOUNT_OPTS="${STEAMOS_BTRFS_HOME_MOUNT_OPTS:-defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag}"
 HOME_MOUNT_SUBVOL="${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL:-@}"
 
-clear_sddm_conf() {
-    rm -f "$SDDM_CONF_FILE" || true
+cmd() {
+    echo '[$]' "${@@Q}" >&2
+    "$@"
 }
-trap clear_sddm_conf SIGINT SIGQUIT SIGTERM ERR EXIT
+
+clear_sddm_conf() {
+    cmd rm -f "$SDDM_CONF_FILE" || true
+}
+onexit=(clear_sddm_conf)
+exit_handler() {
+    for func in "${onexit[@]}"
+    do
+        "$func" || true
+    done
+    onexit=()
+}
+trap exit_handler SIGINT SIGQUIT SIGTERM ERR EXIT
 
 if [[ $(blkid -o value -s TYPE "$HOME_DEVICE") != "ext4" ]]
 then
-    clear_sddm_conf
+    exit_handler
     systemd-notify --ready --status="$HOME_MOUNTPOINT is already formatted as btrfs"
     echo "(100%) $HOME_MOUNTPOINT is already formatted as btrfs"
     exit 0
 fi
-mkdir -p "$(dirname "$SDDM_CONF_FILE")"
+
+exit_log() {
+    if ! [[ -s "$LOGFILE" ]]
+    then
+        return
+    fi
+    if ! cmd mount -o "${HOME_MOUNT_OPTS}" "$HOME_DEVICE" "$HOME_MOUNTPOINT"
+    then
+        return
+    fi
+    if cmd btrfs subvolume show "${HOME_MOUNTPOINT}/${HOME_MOUNT_SUBVOL}" &>/dev/null
+    then
+        LOGFILE_OFFLOAD="${HOME_MOUNTPOINT}/${HOME_MOUNT_SUBVOL}/.steamos/offload${LOGFILE}"
+    else
+        LOGFILE_OFFLOAD="${HOME_MOUNTPOINT}/.steamos/offload${LOGFILE}"
+    fi
+    cmd mkdir -p "$(dirname "$LOGFILE_OFFLOAD")" || true
+    cmd cat "$LOGFILE" >> "$LOGFILE_OFFLOAD" || true
+    cmd umount -l "$HOME_MOUNTPOINT" || true
+}
+onexit=(exit_log "${onexit[@]}")
+if cmd mkdir -p "$(dirname "$LOGFILE")" && cmd touch "$LOGFILE"
+then
+    exec &> >(tee -a "$LOGFILE")
+fi
+cmd mkdir -p "$(dirname "$SDDM_CONF_FILE")"
 cat <<EOF > "$SDDM_CONF_FILE"
 [Autologin]
 Session=steamos-convert-home-to-btrfs.desktop
@@ -36,10 +75,10 @@ User=root
 EOF
 systemd-notify --ready --status="Start btrfs conversion of $HOME_MOUNTPOINT..."
 echo "(  0%) Start btrfs conversion of $HOME_MOUNTPOINT..."
-umount -l "$HOME_DEVICE" &>/dev/null || true
+cmd umount -l "$HOME_DEVICE" &>/dev/null || true
 # Make sure the filesystem is clean
 echo "(  0%) Start filesystem check..."
-if ! e2fsck -fvy "$HOME_DEVICE"
+if ! cmd e2fsck -fvy "$HOME_DEVICE"
 then
     echo "(100%) Filesystem check error." >&2
     exit 1
@@ -47,90 +86,95 @@ fi
 echo "(  5%) Filesystem check done."
 # Convert to btrfs keeping label and uuid
 echo "(  5%) Start btrfs conversion..."
-if ! btrfs-convert -L --uuid copy "$HOME_DEVICE"
+if ! cmd btrfs-convert -L --uuid copy "$HOME_DEVICE"
 then
     echo "(100%) Btrfs conversion error." >&2
     exit 1
 fi
 echo "( 40%) Btrfs conversion done."
-if ! mount "$ROOTFS_DEVICE" /mnt
+if ! cmd mount "$ROOTFS_DEVICE" /mnt
 then
     echo "(100%) Mount error." >&2
     exit 1
 fi
-if ! btrfs property set /mnt ro false
+exit_umount_rootfs() {
+    cmd umount -l /mnt || true
+}
+onexit=(exit_umount_rootfs "${onexit[@]}")
+if ! cmd btrfs property set /mnt ro false
 then
     echo "(100%) Set readonly false error." >&2
-    umount -l /mnt || true
     exit 1
 fi
-sed -i 's#^\S\+\s\+'"${HOME_MOUNTPOINT}"'\s\+.*$#'"${HOME_DEVICE}"' '"${HOME_MOUNTPOINT}"' btrfs '"${HOME_MOUNT_OPTS}"',subvol='"${HOME_MOUNT_SUBVOL}"' 0 0#' /mnt/etc/fstab
-if ! btrfs property set /mnt ro true
+cmd sed -i 's#^\S\+\s\+'"${HOME_MOUNTPOINT}"'\s\+.*$#'"${HOME_DEVICE}"' '"${HOME_MOUNTPOINT}"' btrfs '"${HOME_MOUNT_OPTS}"',subvol='"${HOME_MOUNT_SUBVOL}"' 0 0#' /mnt/etc/fstab
+if ! cmd btrfs property set /mnt ro true
 then
     echo "(100%) Set readonly true error." >&2
-    umount -l /mnt || true
     exit 1
 fi
-umount -l /mnt || true
-if ! mount -o "${HOME_MOUNT_OPTS}" "$HOME_DEVICE" "$HOME_MOUNTPOINT"
+exit_umount_rootfs
+onexit=("${onexit[@]:1}")
+if ! cmd mount -o "${HOME_MOUNT_OPTS}" "$HOME_DEVICE" "$HOME_MOUNTPOINT"
 then
     echo "(100%) Mount error." >&2
     exit 1
 fi
+exit_umount_home() {
+    cmd umount -l "$HOME_MOUNTPOINT" || true
+}
+onexit=(exit_umount_home "${onexit[@]}")
 # Remove the original metadata
 echo "( 40%) Remove ext2_saved."
-if ! btrfs subvolume delete "$HOME_MOUNTPOINT"/ext2_saved
+if ! cmd btrfs subvolume delete "$HOME_MOUNTPOINT"/ext2_saved
 then
     echo "(100%) Subvolume delete ext2_saved error." >&2
-    umount -l "$HOME_MOUNTPOINT" || true
     exit 1
 fi
 # Not needed anymore
 echo "( 41%) Remove lost+found."
-rm -rf "$HOME_MOUNTPOINT"/lost+found
+cmd rm -rf "$HOME_MOUNTPOINT"/lost+found
 # Remove the swapfile if present
 echo "( 42%) Remove swapfile."
-rm -f "$HOME_MOUNTPOINT"/swapfile
+cmd rm -f "$HOME_MOUNTPOINT"/swapfile
 # Create the root subvolume ${HOME_MOUNT_SUBVOL}
 echo "( 43%) Create root subvolume ${HOME_MOUNT_SUBVOL}."
-if ! btrfs subvolume create "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL"
+if ! cmd btrfs subvolume create "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL"
 then
     echo "(100%) Subvolume delete ext2_saved error." >&2
-    umount -l "$HOME_MOUNTPOINT" || true
     exit 1
 fi
 # Move all existing files into the new root
 echo "( 44%) Move all files into ${HOME_MOUNT_SUBVOL}..."
-if ! find "$HOME_MOUNTPOINT" -mindepth 1 -maxdepth 1 -not -name "$HOME_MOUNT_SUBVOL" -exec mv -t "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL" '{}' +
+if ! cmd find "$HOME_MOUNTPOINT" -mindepth 1 -maxdepth 1 -not -name "$HOME_MOUNT_SUBVOL" -exec mv -t "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL" '{}' +
 then
     echo "(100%) Move all files into ${HOME_MOUNT_SUBVOL} error." >&2
-    umount -l "$HOME_MOUNTPOINT" || true
     exit 1
 fi
 echo "( 50%) Moving all files into ${HOME_MOUNT_SUBVOL} done."
 # Pass all files through the allocator, can take a while
 nbfiles="$(find "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL" -type f -printf '\n' | wc -l)"
 echo "( 50%) Start defragmentation on $nbfiles files..."
-if ! stdbuf -oL btrfs filesystem defrag -czstd -v -r -f "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL" | awk '{printf("( %d%%) Defragmenting %s\n",50+(NR/'"$nbfiles"'*40),$0)}'
+if ! cmd stdbuf -oL btrfs filesystem defrag -czstd -v -r -f "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL" | awk '{printf("( %d%%) Defragmenting %s\n",50+(NR/'"$nbfiles"'*40),$0)}'
 then
     echo "(100%) Defragmentation error." >&2
-    umount -l "$HOME_MOUNTPOINT" || true
     exit 1
 fi
 echo "( 90%) Defragmentation done."
 # Run balance
 echo "( 90%) Start balance..."
-if ! btrfs balance start -m -v "$HOME_MOUNTPOINT"
+if ! cmd btrfs balance start -m -v "$HOME_MOUNTPOINT"
 then
     echo "(100%) Balance error." >&2
-    umount -l "$HOME_MOUNTPOINT" || true
     exit 1
 fi
 echo "(100%) Balance done."
-umount -l "$HOME_MOUNTPOINT" || true
+exit_umount_home
+onexit=("${onexit[@]:1}")
 echo "(100%) Btrfs conversion of $HOME_MOUNTPOINT done."
 systemd-notify --status="Btrfs conversion of $HOME_MOUNTPOINT done."
 clear_sddm_conf
+exit_log
+onexit=()
 echo "(100%) Rebooting in 4 seconds..."
 sleep 4
-systemctl reboot
+cmd systemctl reboot

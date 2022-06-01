@@ -19,6 +19,7 @@ then
 else
   NOCONVERTHOME="${NOCONVERTHOME:-0}"
 fi
+LOGFILE="/var/log/steamos-btrfs.log"
 
 if [[ -f /etc/default/steamos-btrfs ]]
 then
@@ -95,27 +96,20 @@ trap quit SIGINT SIGQUIT SIGTERM
 #
 prompt_step()
 {
-  title="$1"
-  msg="$2"
-  oklabel="${3:-}"
-  cancellabel="${4:-}"
+  title="${1:-}"
+  msg="${2:-}"
+  oklabel="${3:-Proceed}"
+  cancellabel="${4:-Cancel}"
+  ewarn "$title"
+  ewarn "$msg"
   if [[ "$NONINTERACTIVE" -ne 1 ]]
   then
-    #Parameterable prompt
-    if [[ -n "${oklabel}" ]] && [[ -n "${cancellabel}" ]]; then
-      if zenity --title "$title" --question --ok-label "${oklabel}" --cancel-label "${cancellabel}" --no-wrap --text "$msg" &>/dev/null
-      then
-        return 0
-      else
-        return 1
-      fi
+    if zenity --title "$title" --question --ok-label "${oklabel}" --cancel-label "${cancellabel}" --no-wrap --text "$msg" &>/dev/null
+    then
+      return 0
     else
-      zenity --title "$title" --question --ok-label "Proceed" --cancel-label "Cancel" --no-wrap --text "$msg" &>/dev/null || exit 1
+      return 1
     fi
-
-  else
-    ewarn "$title"
-    ewarn "$msg"
   fi
 }
 
@@ -252,6 +246,11 @@ factory_pacman()
     --noconfirm \
     "$@"
 }
+
+if mkdir -p "$(dirname "$LOGFILE")" && touch "$LOGFILE"
+then
+  exec &> >(tee -a "$LOGFILE")
+fi
 
 prompt_step "SteamOS Btrfs" "This installer will inject the Btrfs payload into the system."
 
