@@ -250,6 +250,7 @@ factory_pacman()
 if mkdir -p "$(dirname "$LOGFILE")" && touch "$LOGFILE"
 then
   exec &> >(tee -a "$LOGFILE")
+  printf '#### %(%F %T)T ####\n'
 fi
 
 prompt_step "SteamOS Btrfs" "This installer will inject the Btrfs payload into the system."

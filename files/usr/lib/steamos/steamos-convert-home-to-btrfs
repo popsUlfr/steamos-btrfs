@@ -66,6 +66,7 @@ onexit=(exit_log "${onexit[@]}")
 if cmd mkdir -p "$(dirname "$LOGFILE")" && cmd touch "$LOGFILE"
 then
     exec &> >(tee -a "$LOGFILE")
+    printf '#### %(%F %T)T ####\n'
 fi
 cmd mkdir -p "$(dirname "$SDDM_CONF_FILE")"
 cat <<EOF > "$SDDM_CONF_FILE"
