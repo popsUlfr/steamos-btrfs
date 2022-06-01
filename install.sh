@@ -343,6 +343,11 @@ do
   fi
 done
 
+# try to remove files from older versions
+estat "Remove files from older versions"
+cmd rm -f {etc,usr/lib}/systemd/system/local-fs-pre.target.wants/steamos-convert-home-to-btrfs*.service \
+  usr/lib/steamos/steamos-convert-home-to-btrfs-progress || true
+
 estat "Copy needed files"
 exit_file_copy() {
   find "$WORKDIR/files" -type f,l -not -name '*.patch*' -exec realpath -s -z --relative-to="$WORKDIR/files" '{}' + | while IFS= read -r -d '' p
