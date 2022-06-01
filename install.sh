@@ -180,34 +180,61 @@ then
   exec sudo -A "$0" "$@"
 fi
 
+epatch_comment()
+{
+  awk '{\
+    if ($0 ~ /^[@+-]/) {\
+      comm = substr(comm, 1, i);\
+      if (comm ~ /\n\n$/) {\
+        gsub(/^[[:space:]]+|[[:space:]]+$/, "", comm);\
+        print comm;\
+      }\
+      exit;\
+    }\
+    else {\
+      comm = comm $0 "\n";\
+      if (comm ~ /\n\n$/)\
+        i=length(comm);\
+    }\
+  }' < "$1"
+}
+
 epatch()
 {
-  patches=()
-  for p in "$1".old.*
+  local tpatch="$1"
+  local patches=()
+  for p in "$tpatch".old.*
   do
     if [[ -f "$p" ]]
     then
       patches=("$p" "${patches[@]}")
     fi
   done
-  patches=("$1" "${patches[@]}")
+  patches=("$tpatch" "${patches[@]}")
   for p in "${patches[@]}"
   do
     if patch --dry-run -Rlfsp1 -i "$p" &>/dev/null
     then
-        patch --no-backup-if-mismatch -Rlfsp1 -i "$p"
-        break
+      cmd patch --no-backup-if-mismatch -Rlfsp1 -i "$p"
+      break
     fi
   done
   for p in "${patches[@]}"
   do
     if patch --dry-run -Nlfsp1 -i "$p" &>/dev/null
     then
-        cmd patch --no-backup-if-mismatch -Nlfp1 -i "$p"
-        return 0
+      tpatch="$p"
+      break
     fi
   done
-  if cmd patch --no-backup-if-mismatch -Nlfp1 -i "$p"
+  # try to parse the comment if available
+  local comment
+  comment="$(epatch_comment "$tpatch")"
+  if [[ -n "$comment" ]]
+  then
+    einfo "$comment"
+  fi
+  if cmd patch --no-backup-if-mismatch -Nlfp1 -i "$tpatch"
   then
     return 0
   fi
