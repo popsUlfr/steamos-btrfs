@@ -1,5 +1,5 @@
 --- beta/usr/lib/hwsupport/format-sdcard.sh	2022-05-26 20:20:25.000000000 +0200
-+++ work/usr/lib/hwsupport/format-sdcard.sh	2022-06-06 11:19:21.360944742 +0200
++++ work/usr/lib/hwsupport/format-sdcard.sh	2022-05-28 19:24:20.048306961 +0200
 @@ -79,7 +79,23 @@
  sync
  parted --script "$SDCARD_DEVICE" mklabel gpt mkpart primary 0% 100%
@@ -16,7 +16,7 @@
 +    mkfs.btrfs ${STEAMOS_BTRFS_SDCARD_BTRFS_FORMAT_OPTS:--f} "$SDCARD_PARTITION"
 +    MOUNT_DIR="/var/run/sdcard-mount"
 +    mkdir -p "$MOUNT_DIR"
-+    mount -o "${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_OPTS:-rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,ssd_spread}" "$SDCARD_PARTITION" "$MOUNT_DIR"
++    mount -o "${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_OPTS:-rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag}" "$SDCARD_PARTITION" "$MOUNT_DIR"
 +    btrfs subvolume create "$MOUNT_DIR/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}"
 +    btrfs subvolume set-default "$MOUNT_DIR/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}"
 +    umount -l "$MOUNT_DIR"

@@ -1,5 +1,5 @@
---- beta/usr/lib/hwsupport/sdcard-mount.sh	2022-05-26 20:20:25.000000000 +0200
-+++ work/usr/lib/hwsupport/sdcard-mount.sh	2022-06-06 12:12:39.672955926 +0200
+--- beta/usr/lib/hwsupport/sdcard-mount.sh	2022-05-09 23:18:38.000000000 +0200
++++ work/usr/lib/hwsupport/sdcard-mount.sh	2022-05-12 16:03:44.110844712 +0200
 @@ -67,9 +67,18 @@
      #    OPTS+=",users,gid=100,umask=000,shortname=mixed,utf8=1,flush"
      #fi
@@ -15,7 +15,7 @@
 +    elif [[ ${ID_FS_TYPE} == "f2fs" ]]; then
 +        OPTS="${STEAMOS_BTRFS_SDCARD_F2FS_MOUNT_OPTS:-rw,noatime,lazytime,compress_algorithm=zstd,compress_chksum,whint_mode=fs-based,atgc,gc_merge}"
 +    elif [[ ${ID_FS_TYPE} == "btrfs" ]]; then
-+        OPTS="${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_OPTS:-rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,ssd_spread}"
++        OPTS="${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_OPTS:-rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag}"
 +    else
 +        # We need symlinks for Steam for now
 +        exit 1
