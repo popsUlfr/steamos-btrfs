@@ -79,6 +79,8 @@ When invoking the install script, supply the rootfs device node as first argumen
 At any time you can download the latest version and go through the installation again to enable the latest changes.
 Disabling the home conversion won't have any effect on an already converted home partition.
 
+At times updates may change the default config options and you may want to merge the changes with your own: [Configuration options](#configuration-options)
+
 ## Uninstall
 
 - the underlying rootfs needs to be mounted somewhere else and the readonly mode disabled
@@ -100,15 +102,16 @@ Disabling the home conversion won't have any effect on an already converted home
 The following mount options are used by default:
 
 - `noatime,lazytime`: to keep writes to a minimum
-- `compress-force=zstd`: force zstd compression always on. zstd is smart enough to do the right thing on uncompressible data, works better and achieves better results than the normal heuristics for compression.
+- `compress-force=zstd`: force zstd compression always on. zstd is smart enough to do the right thing on uncompressible data, works better and achieves better results than the normal heuristics for compression. You can set a specific compression level by appending `:<level>` to the type e.g.: `compress-force=zstd:6`. The default level is 3 and going over 6 is rarely worth it (compression/decompression complexity grows quickly after that).
 - `space_cache=v2`: make sure the newer implementation is used
-- `autodefrag`: small random writes are queued up for defragmentation
+- `autodefrag`: small random writes are queued up for defragmentation, invests more effort during writes to achieve as much contiguous data as possible. Interesting for games where more fragmentation can lead to loading stutter.
 - `subvol=@`: by default it will create a subvolume `@` (can be changed in the config) which is used as real root of the filesystem. SD Cards formatted as btrfs will be searched for the `@` subvolume or fallback to `/`.
+- `ssd_spread`:  attempts to allocate into bigger and aligned chunks of unused space for a potential performance boost on SD cards.
 
 ### F2FS mount options
 
 - `noatime,lazytime`: to keep writes to a minimum
-- `compress_algorithm=zstd`: use zstd compression
+- `compress_algorithm=zstd`: use zstd compression. You can set a specific compression level by appending `:<level>` to the type e.g.: `compress_algorithm=zstd:6`. The default level is 3 and going over 6 is rarely worth it (compression/decompression complexity grows quickly after that).
 - `compress_chksum`: verify compressed blocks with a checksum
 - `whint_mode=fs-based`: optimize fs-log management
 - `atgc,gc_merge`: use better garbage collector, async garbage collection
@@ -131,6 +134,18 @@ A configuration file is available to change various filesystem options at [`/etc
 - `STEAMOS_BTRFS_SDCARD_EXT4_FORMAT_OPTS`   : flags to pass to `mkfs.ext4` during the format.
 - `STEAMOS_BTRFS_SDCARD_F2FS_MOUNT_OPTS`    : the f2fs mount options for f2fs formatted SD cards.
 - `STEAMOS_BTRFS_SDCARD_F2FS_FORMAT_OPTS`   : flags to pass to `mkfs.f2fs` during the format.
+
+If you changed the default options and want to reset them or want to benefit from updated default options you can do the following:
+
+Delete the modified file from the upper overlay layer:
+```sh
+sudo rm -f /var/lib/overlays/etc/upper/default/steamos-btrfs
+```
+
+Refresh the overlay for `/etc`:
+```sh
+sudo mount -o remount /etc
+```
 
 ## Deduplication
 
