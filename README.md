@@ -1,4 +1,4 @@
-# SteamOS 3.0 Btrfs converter
+# SteamOS 3/Steam Deck Btrfs converter <img align="right" height="32" src="data/steamos-btrfs-logo.svg">
 
 This injector will install the necessary payload to keep a btrfs formatted /home even through system updates. You may also choose to only install the support for formatting and mounting of multiple filesystems for the SD cards.
 It will allow to mount btrfs, f2fs and ext4 formatted sd cards and will also force new sd cards to be formatted as btrfs by default or a user configured filesystem.
@@ -17,6 +17,8 @@ Btrfs with its transparent compression and deduplication capabilities can achiev
 - Btrfs, f2fs, ext4 formating of SD card
 - Progress dialog and logging during the home conversion!
 - **Survives updates and branch changes!**
+
+![Btrfs /home conversion progress dialog](data/steamos-btrfs-conversion.webp "Btrfs /home conversion progress dialog")
 
 ## Remaining issues and troubleshooting
 

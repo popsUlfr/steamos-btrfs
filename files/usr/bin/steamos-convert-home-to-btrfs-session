@@ -1,8 +1,8 @@
 #!/bin/bash
 set -eu
 
-LINES_LIMIT="50"
-LINE_LIMIT="90"
+LINES_LIMIT="60"
+LINE_LIMIT="80"
 TITLE="Converting /home to btrfs"
 
 if [[ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]]
@@ -53,15 +53,16 @@ do
         fi
         lines+=("$msg")
     else
+        line="   $line"
         if [[ "${#line}" -gt "$LINE_LIMIT" ]]
         then
             line="${line:0:$((LINE_LIMIT-3))}..."
         fi
-        lines+=(">> $line")
+        lines+=("$line")
     fi
     if [[ "${#lines[@]}" -gt "$LINES_LIMIT" ]]
     then
         lines=("${lines[0]}" "${lines[@]:$((${#lines[@]}-LINES_LIMIT))}")
     fi
-    qdbus $dbusref setLabelText "$(IFS=$'\n'; echo "${lines[*]}")"
+    qdbus $dbusref setLabelText "$(IFS=$'\n'; echo "<pre style=\"text-align: left\"><code>${lines[*]}</code></pre>")"
 done < <(journalctl --boot --unit steamos-convert-home-to-btrfs.service --follow --output cat)
