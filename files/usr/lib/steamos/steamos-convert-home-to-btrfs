@@ -7,6 +7,9 @@ set -eu
 HOME_DEVICE="/dev/disk/by-partsets/shared/home"
 HOME_MOUNTPOINT="/home"
 ROOTFS_DEVICE="/dev/disk/by-partsets/self/rootfs"
+ROOTFS_MOUNTPOINT="/mnt"
+VAR_DEVICE="/dev/disk/by-partsets/self/var"
+VAR_MOUNTPOINT="/tmp/var"
 SDDM_CONF_FILE="/etc/sddm.conf.d/zzzz-steamos-convert-home-to-btrfs.conf"
 LOGFILE="/var/log/steamos-btrfs.log"
 
@@ -37,9 +40,10 @@ trap exit_handler SIGINT SIGQUIT SIGTERM ERR EXIT
 
 if [[ $(blkid -o value -s TYPE "$HOME_DEVICE") != "ext4" ]]
 then
+    echo "(100%) Removing sddm configuration '$SDDM_CONF_FILE'."
     exit_handler
-    systemd-notify --ready --status="$HOME_MOUNTPOINT is already formatted as btrfs"
     echo "(100%) $HOME_MOUNTPOINT is already formatted as btrfs"
+    systemd-notify --ready --status="$HOME_MOUNTPOINT is already formatted as btrfs"
     exit 0
 fi
 
@@ -68,14 +72,15 @@ then
     exec &> >(tee -a "$LOGFILE")
     printf '#### %(%F %T)T ####\n'
 fi
+echo "(  0%) Creating sddm configuration '$SDDM_CONF_FILE'."
 cmd mkdir -p "$(dirname "$SDDM_CONF_FILE")"
 cat <<EOF > "$SDDM_CONF_FILE"
 [Autologin]
 Session=steamos-convert-home-to-btrfs.desktop
 User=root
 EOF
-systemd-notify --ready --status="Start btrfs conversion of $HOME_MOUNTPOINT..."
 echo "(  0%) Start btrfs conversion of $HOME_MOUNTPOINT..."
+systemd-notify --ready --status="Start btrfs conversion of $HOME_MOUNTPOINT..."
 cmd umount -l "$HOME_DEVICE" &>/dev/null || true
 # Make sure the filesystem is clean
 echo "(  0%) Start filesystem check..."
@@ -93,28 +98,45 @@ then
     exit 1
 fi
 echo "( 40%) Btrfs conversion done."
-if ! cmd mount "$ROOTFS_DEVICE" /mnt
+cmd mkdir -p "$ROOTFS_MOUNTPOINT"
+if ! cmd mount "$ROOTFS_DEVICE" "$ROOTFS_MOUNTPOINT"
 then
     echo "(100%) Mount error." >&2
     exit 1
 fi
 exit_umount_rootfs() {
-    cmd umount -l /mnt || true
+    cmd umount -l "$ROOTFS_MOUNTPOINT" || true
 }
 onexit=(exit_umount_rootfs "${onexit[@]}")
-if ! cmd btrfs property set /mnt ro false
+if ! cmd btrfs property set "$ROOTFS_MOUNTPOINT" ro false
 then
     echo "(100%) Set readonly false error." >&2
     exit 1
 fi
-cmd sed -i 's#^\S\+\s\+'"${HOME_MOUNTPOINT}"'\s\+.*$#'"${HOME_DEVICE}"' '"${HOME_MOUNTPOINT}"' btrfs '"${HOME_MOUNT_OPTS}"',subvol='"${HOME_MOUNT_SUBVOL}"' 0 0#' /mnt/etc/fstab
-if ! cmd btrfs property set /mnt ro true
+exit_ro_rootfs() {
+    cmd btrfs property set "$ROOTFS_MOUNTPOINT" ro true || true
+}
+onexit=(exit_ro_rootfs "${onexit[@]}")
+fstab_files=("$ROOTFS_MOUNTPOINT/etc/fstab")
+cmd mkdir -p "$VAR_MOUNTPOINT"
+if ! cmd mount "$VAR_DEVICE" "$VAR_MOUNTPOINT"
 then
-    echo "(100%) Set readonly true error." >&2
+    echo "(100%) Mount error." >&2
     exit 1
 fi
+exit_umount_var() {
+    cmd umount -l "$VAR_MOUNTPOINT" || true
+}
+onexit=(exit_umount_var "${onexit[@]}")
+if [[ -f "$VAR_MOUNTPOINT/lib/overlays/etc/upper/fstab" ]]
+then
+    fstab_files+=("$VAR_MOUNTPOINT/lib/overlays/etc/upper/fstab")
+fi
+cmd sed -i 's#^\S\+\s\+'"${HOME_MOUNTPOINT}"'\s\+.*$#'"${HOME_DEVICE}"' '"${HOME_MOUNTPOINT}"' btrfs '"${HOME_MOUNT_OPTS}"',subvol='"${HOME_MOUNT_SUBVOL}"' 0 0#' "${fstab_files[@]}"
+exit_umount_var
+exit_ro_rootfs
 exit_umount_rootfs
-onexit=("${onexit[@]:1}")
+onexit=("${onexit[@]:3}")
 if ! cmd mount -o "${HOME_MOUNT_OPTS}" "$HOME_DEVICE" "$HOME_MOUNTPOINT"
 then
     echo "(100%) Mount error." >&2
@@ -141,7 +163,7 @@ cmd rm -f "$HOME_MOUNTPOINT"/swapfile
 echo "( 43%) Create root subvolume ${HOME_MOUNT_SUBVOL}."
 if ! cmd btrfs subvolume create "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL"
 then
-    echo "(100%) Subvolume delete ext2_saved error." >&2
+    echo "(100%) Subvolume creation error." >&2
     exit 1
 fi
 # Move all existing files into the new root
@@ -172,10 +194,12 @@ echo "(100%) Balance done."
 exit_umount_home
 onexit=("${onexit[@]:1}")
 echo "(100%) Btrfs conversion of $HOME_MOUNTPOINT done."
-systemd-notify --status="Btrfs conversion of $HOME_MOUNTPOINT done."
+echo "(100%) Removing sddm configuration '$SDDM_CONF_FILE'."
 clear_sddm_conf
+echo "(100%) Persisting log."
 exit_log
 onexit=()
+systemd-notify --status="Btrfs conversion of $HOME_MOUNTPOINT done."
 echo "(100%) Rebooting in 4 seconds..."
 sleep 4
 cmd systemctl reboot

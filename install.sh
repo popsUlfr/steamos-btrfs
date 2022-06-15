@@ -7,6 +7,7 @@ set -eu
 WORKDIR="$(realpath "$(dirname "$0")")"
 ROOTFS_DEVICE="${1:-/dev/disk/by-partsets/self/rootfs}"
 ROOTFS_MOUNTPOINT="/mnt"
+VAR_DEVICE="${ROOTFS_DEVICE%/*}/var"
 VAR_MOUNTPOINT="/tmp/var"
 HOME_DEVICE="/dev/disk/by-partsets/shared/home"
 HOME_MOUNTPOINT="/home"
@@ -297,14 +298,33 @@ then
   fi
   exit_fstab_orig() { cmd mv -vf "etc/fstab"{.orig,} || true ; }
   onexiterr=(exit_fstab_orig "${onexiterr[@]}")
+  fstab_files=(etc/fstab)
+  # if the user modified the fstab we will need to patch the one on the var partition too
+  exit_fstab_var_umount() { if [[ -d "$VAR_MOUNTPOINT" ]]; then cmd umount -l "$VAR_MOUNTPOINT" || true; cmd rmdir "$VAR_MOUNTPOINT" || true; fi; }
+  onexiterr=(exit_fstab_var_umount "${onexiterr[@]}")
+  cmd mkdir -p "$VAR_MOUNTPOINT"
+  cmd mount "$VAR_DEVICE" "$VAR_MOUNTPOINT"
+  if [[ -f "$VAR_MOUNTPOINT/lib/overlays/etc/upper/fstab" ]]
+  then
+    fstab_files+=("$VAR_MOUNTPOINT/lib/overlays/etc/upper/fstab")
+    if [[ ! -f "$VAR_MOUNTPOINT/lib/overlays/etc/upper/fstab.orig" ]]
+    then
+      estat "Backing up '$VAR_MOUNTPOINT/lib/overlays/etc/upper/fstab' to '$VAR_MOUNTPOINT/lib/overlays/etc/upper/fstab.orig'"
+      cmd cp -a "$VAR_MOUNTPOINT/lib/overlays/etc/upper/fstab"{,.orig}
+    fi
+    exit_fstab_var_orig() { cmd mv -vf "$VAR_MOUNTPOINT/lib/overlays/etc/upper/fstab"{.orig,} || true ; }
+    exit_fstab_var_mount() { if [[ ! -d "$VAR_MOUNTPOINT" ]] || ! mountpoint -q "$VAR_MOUNTPOINT"; then cmd mkdir -p "$VAR_MOUNTPOINT" || true; cmd mount "$VAR_DEVICE" "$VAR_MOUNTPOINT" || true; fi; }
+    onexiterr=(exit_fstab_var_mount exit_fstab_var_orig "${onexiterr[@]}")
+  fi
   if [[ "$(blkid -o value -s TYPE "$HOME_DEVICE")" != "ext4" ]]
   then
     estat "Patch /etc/fstab to use btrfs for $HOME_MOUNTPOINT"
-    sed -i 's#^\S\+\s\+'"$HOME_MOUNTPOINT"'\s\+\(ext4\|tmpfs\|btrfs\)\s\+.*$#'"$HOME_DEVICE"' '"$HOME_MOUNTPOINT"' btrfs '"${HOME_MOUNT_OPTS}"',subvol='"${HOME_MOUNT_SUBVOL}"' 0 0#' etc/fstab
+    cmd sed -i 's#^\S\+\s\+'"$HOME_MOUNTPOINT"'\s\+\(ext4\|tmpfs\|btrfs\)\s\+.*$#'"$HOME_DEVICE"' '"$HOME_MOUNTPOINT"' btrfs '"${HOME_MOUNT_OPTS}"',subvol='"${HOME_MOUNT_SUBVOL}"' 0 0#' "${fstab_files[@]}"
   else
     estat "Patch /etc/fstab to use temporary $HOME_MOUNTPOINT in tmpfs"
-    sed -i 's#^\S\+\s\+'"$HOME_MOUNTPOINT"'\s\+ext4\s\+.*$#tmpfs '"$HOME_MOUNTPOINT"' tmpfs defaults,nofail,noatime,lazytime 0 0#' etc/fstab
+    cmd sed -i 's#^\S\+\s\+'"$HOME_MOUNTPOINT"'\s\+ext4\s\+.*$#tmpfs '"$HOME_MOUNTPOINT"' tmpfs defaults,nofail,noatime,lazytime 0 0#' "${fstab_files[@]}"
   fi
+  exit_fstab_var_umount
 fi
 
 # patch existing files
@@ -402,7 +422,7 @@ estat "Synchronize the /var partition with the new pacman state if needed"
 exit_var() { if [[ -d "$VAR_MOUNTPOINT" ]]; then cmd umount -l "$VAR_MOUNTPOINT" || true; cmd rmdir "$VAR_MOUNTPOINT" || true; fi; }
 onexiterr=(exit_var "${onexiterr[@]}")
 cmd mkdir -p "$VAR_MOUNTPOINT"
-cmd mount "$(dirname "$ROOTFS_DEVICE")/var" "$VAR_MOUNTPOINT"
+cmd mount "$VAR_DEVICE" "$VAR_MOUNTPOINT"
 if [[ -d "$VAR_MOUNTPOINT"/lib/pacman ]]
 then
   cmd cp -a -r -u usr/share/factory/var/lib/pacman/. "$VAR_MOUNTPOINT"/lib/pacman/
