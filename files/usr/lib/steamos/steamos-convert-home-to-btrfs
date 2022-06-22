@@ -50,6 +50,13 @@ then
     exit 0
 fi
 
+exit_reboot_error() {
+    echo "(100%) Error encountered. Rebooting in 120 seconds..."
+    echo "(100%) Please check '${LOGFILE}' and report any issues."
+    sleep 120
+    cmd systemctl reboot
+}
+
 exit_log() {
     if ! [[ -s "$LOGFILE" ]]
     then
@@ -101,7 +108,7 @@ exit_restore_fstab() {
     cmd umount -l "$ROOTFS_MOUNTPOINT" || true
 }
 
-onexit=(exit_restore_fstab exit_log "${onexit[@]}")
+onexit=(exit_restore_fstab exit_log "${onexit[@]}" exit_reboot_error)
 if cmd mkdir -p "$(dirname "$LOGFILE")" && cmd touch "$LOGFILE"
 then
     exec &> >(tee -a "$LOGFILE")
