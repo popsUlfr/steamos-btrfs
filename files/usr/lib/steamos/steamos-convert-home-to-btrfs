@@ -25,10 +25,13 @@ cmd() {
     "$@"
 }
 
+mask_service() {
+    cmd systemctl --no-block mask steamos-convert-home-to-btrfs.service || true
+}
 clear_sddm_conf() {
     cmd rm -f "$SDDM_CONF_FILE" || true
 }
-onexit=(clear_sddm_conf)
+onexit=(clear_sddm_conf mask_service)
 exit_handler() {
     for func in "${onexit[@]}"
     do
@@ -38,7 +41,7 @@ exit_handler() {
 }
 trap exit_handler SIGINT SIGQUIT SIGTERM ERR EXIT
 
-if [[ $(blkid -o value -s TYPE "$HOME_DEVICE") != "ext4" ]]
+if [[ "$(blkid -o value -s TYPE "$HOME_DEVICE")" != "ext4" ]]
 then
     echo "(100%) Removing sddm configuration '$SDDM_CONF_FILE'."
     exit_handler
@@ -52,21 +55,53 @@ exit_log() {
     then
         return
     fi
-    if ! cmd mount -o "${HOME_MOUNT_OPTS}" "$HOME_DEVICE" "$HOME_MOUNTPOINT"
+    if [[ "$(blkid -o value -s TYPE "$HOME_DEVICE")" != "btrfs" ]]
     then
-        return
-    fi
-    if cmd btrfs subvolume show "${HOME_MOUNTPOINT}/${HOME_MOUNT_SUBVOL}" &>/dev/null
-    then
-        LOGFILE_OFFLOAD="${HOME_MOUNTPOINT}/${HOME_MOUNT_SUBVOL}/.steamos/offload${LOGFILE}"
-    else
+        if ! cmd mount "$HOME_DEVICE" "$HOME_MOUNTPOINT"
+        then
+            return
+        fi
         LOGFILE_OFFLOAD="${HOME_MOUNTPOINT}/.steamos/offload${LOGFILE}"
+    else
+        if ! cmd mount -o "${HOME_MOUNT_OPTS}" "$HOME_DEVICE" "$HOME_MOUNTPOINT"
+        then
+            return
+        fi
+        if cmd btrfs subvolume show "${HOME_MOUNTPOINT}/${HOME_MOUNT_SUBVOL}" &>/dev/null
+        then
+            LOGFILE_OFFLOAD="${HOME_MOUNTPOINT}/${HOME_MOUNT_SUBVOL}/.steamos/offload${LOGFILE}"
+        else
+            LOGFILE_OFFLOAD="${HOME_MOUNTPOINT}/.steamos/offload${LOGFILE}"
+        fi
     fi
     cmd mkdir -p "$(dirname "$LOGFILE_OFFLOAD")" || true
     cmd cat "$LOGFILE" >> "$LOGFILE_OFFLOAD" || true
     cmd umount -l "$HOME_MOUNTPOINT" || true
 }
-onexit=(exit_log "${onexit[@]}")
+
+exit_restore_fstab() {
+    cmd mkdir -p "$ROOTFS_MOUNTPOINT"
+    if ! cmd mount "$ROOTFS_DEVICE" "$ROOTFS_MOUNTPOINT"
+    then
+        return
+    fi
+    cmd btrfs property set "$ROOTFS_MOUNTPOINT" ro false || true
+    fstab_files=("$ROOTFS_MOUNTPOINT/etc/fstab")
+    cmd mkdir -p "$VAR_MOUNTPOINT"
+    if cmd mount "$VAR_DEVICE" "$VAR_MOUNTPOINT" && [[ -f "$VAR_MOUNTPOINT/lib/overlays/etc/upper/fstab" ]]
+    then
+        fstab_files+=("$VAR_MOUNTPOINT/lib/overlays/etc/upper/fstab")
+    fi
+    cmd sed -i 's#^\S\+\s\+'"${HOME_MOUNTPOINT}"'\s\+.*$#'"${HOME_DEVICE}"' '"${HOME_MOUNTPOINT}"' ext4 defaults,nofail,x-systemd.growfs 0 2#' "${fstab_files[@]}" || true
+    if mountpoint -q "$VAR_MOUNTPOINT"
+    then
+        cmd umount -l "$VAR_MOUNTPOINT" || true
+    fi
+    cmd btrfs property set "$ROOTFS_MOUNTPOINT" ro true || true
+    cmd umount -l "$ROOTFS_MOUNTPOINT" || true
+}
+
+onexit=(exit_restore_fstab exit_log "${onexit[@]}")
 if cmd mkdir -p "$(dirname "$LOGFILE")" && cmd touch "$LOGFILE"
 then
     exec &> >(tee -a "$LOGFILE")
@@ -98,6 +133,7 @@ then
     exit 1
 fi
 echo "( 40%) Btrfs conversion done."
+onexit=("${onexit[@]:1}")
 cmd mkdir -p "$ROOTFS_MOUNTPOINT"
 if ! cmd mount "$ROOTFS_DEVICE" "$ROOTFS_MOUNTPOINT"
 then
@@ -196,6 +232,7 @@ onexit=("${onexit[@]:1}")
 echo "(100%) Btrfs conversion of $HOME_MOUNTPOINT done."
 echo "(100%) Removing sddm configuration '$SDDM_CONF_FILE'."
 clear_sddm_conf
+mask_service
 echo "(100%) Persisting log."
 exit_log
 onexit=()
