@@ -53,7 +53,11 @@ fi
 exit_reboot_error() {
     echo "(100%) Error encountered. Rebooting in 120 seconds..."
     echo "(100%) Please check '${LOGFILE}' and report any issues."
-    sleep 120
+    # don't remove the sddm override too early, sddm might not be started yet
+    sleep 10
+    clear_sddm_conf
+    mask_service
+    sleep 110
     cmd systemctl reboot
 }
 
@@ -108,7 +112,7 @@ exit_restore_fstab() {
     cmd umount -l "$ROOTFS_MOUNTPOINT" || true
 }
 
-onexit=(exit_restore_fstab exit_log "${onexit[@]}" exit_reboot_error)
+onexit=(exit_restore_fstab exit_log exit_reboot_error)
 if cmd mkdir -p "$(dirname "$LOGFILE")" && cmd touch "$LOGFILE"
 then
     exec &> >(tee -a "$LOGFILE")
