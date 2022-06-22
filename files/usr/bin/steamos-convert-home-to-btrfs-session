@@ -65,4 +65,4 @@ do
         lines=("${lines[0]}" "${lines[@]:$((${#lines[@]}-LINES_LIMIT))}")
     fi
     qdbus $dbusref setLabelText "$(IFS=$'\n'; echo "<pre style=\"text-align: left\"><code>${lines[*]}</code></pre>")"
-done < <(journalctl --boot --unit steamos-convert-home-to-btrfs.service --follow --output cat)
+done < <(journalctl --boot --unit steamos-convert-home-to-btrfs.service --follow --no-tail --output cat)
