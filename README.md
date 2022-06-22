@@ -29,6 +29,19 @@ This configuration has been confirmed by me and others to survive through update
 
 A log file is created at `/var/log/steamos-btrfs.log` containing the installation and the home conversion log to review the process or help with bug reports.
 
+If the conversion of the home partition fails for any reason, the service will do its best to restore the original ext4 mount and hard mask the systemd conversion service to prevent a conversion boot loop.
+
+Please submit the log file at `/var/log/steamos-btrfs.log` as new issue if that happens to you.
+
+You'll need to explicitely unmask the service yourself if you want to attempt the conversion again:
+```sh
+sudo systemctl unmask steamos-convert-home-to-btrfs.service
+```
+or
+```sh
+sudo rm /etc/systemd/system/steamos-convert-home-to-btrfs.service
+```
+
 ## Install
 
 **CAUTION**: there's not an easy way back if you proceed! Once the /home partition is converted, you can not go back to ext4 and keep your files.
