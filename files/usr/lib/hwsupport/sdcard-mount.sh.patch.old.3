@@ -1,6 +1,6 @@
---- beta/usr/lib/hwsupport/sdcard-mount.sh	2022-06-24 17:40:55.000000000 +0200
-+++ work/usr/lib/hwsupport/sdcard-mount.sh	2022-07-01 12:11:18.949404893 +0200
-@@ -69,9 +69,18 @@
+--- beta/usr/lib/hwsupport/sdcard-mount.sh	2022-05-26 20:20:25.000000000 +0200
++++ work/usr/lib/hwsupport/sdcard-mount.sh	2022-06-06 12:12:39.672955926 +0200
+@@ -67,9 +67,18 @@
      #    OPTS+=",users,gid=100,umask=000,shortname=mixed,utf8=1,flush"
      #fi
  
@@ -21,22 +21,22 @@
 +        exit 1
      fi
  
-     if ! /bin/mount -o "${OPTS}" -- "${DEVICE}" "${MOUNT_POINT}"; then
-@@ -80,6 +89,17 @@
+     if ! /bin/mount -o ${OPTS} ${DEVICE} ${MOUNT_POINT}; then
+@@ -78,6 +87,17 @@
          exit 1
      fi
  
 +    # Check if there's a subvolume @ and use that as root of the drive
 +    if [[ ${ID_FS_TYPE} == "btrfs" ]] && btrfs subvolume show "${MOUNT_POINT}/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}" &>/dev/null; then
-+        /bin/umount -l -- "${MOUNT_POINT}"
++        /bin/umount -f -l ${MOUNT_POINT}
 +        OPTS+=",subvol=${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}"
-+        if ! /bin/mount -o "${OPTS}" -- "${DEVICE}" "${MOUNT_POINT}"; then
++        if ! /bin/mount -o ${OPTS} ${DEVICE} ${MOUNT_POINT}; then
 +            echo "Error mounting ${DEVICE} (status = $?)"
-+            /bin/rmdir -- "${MOUNT_POINT}"
++            /bin/rmdir ${MOUNT_POINT}
 +            exit 1
 +        fi
 +    fi
 +
-     chown 1000:1000 -- "${MOUNT_POINT}"
+     chown 1000:1000 ${MOUNT_POINT}
  
      echo "**** Mounted ${DEVICE} at ${MOUNT_POINT} ****"
