@@ -1,5 +1,5 @@
---- beta/usr/lib/hwsupport/format-sdcard.sh	2022-07-21 18:38:37.000000000 +0200
-+++ work/usr/lib/hwsupport/format-sdcard.sh	2022-07-29 20:10:29.119186832 +0200
+--- beta/usr/lib/hwsupport/format-sdcard.sh	2022-05-26 20:20:25.000000000 +0200
++++ work/usr/lib/hwsupport/format-sdcard.sh	2022-06-06 11:19:21.360944742 +0200
 @@ -79,7 +79,23 @@
  sync
  parted --script "$SDCARD_DEVICE" mklabel gpt mkpart primary 0% 100%
@@ -13,7 +13,7 @@
 +elif [[ "$STEAMOS_BTRFS_SDCARD_FORMAT_FS" == "f2fs" ]]; then
 +    mkfs.f2fs ${STEAMOS_BTRFS_SDCARD_F2FS_FORMAT_OPTS:--O encrypt,extra_attr,inode_checksum,sb_checksum,casefold,compression -C utf8 -f} "$SDCARD_PARTITION"
 +else
-+    mkfs.btrfs ${STEAMOS_BTRFS_SDCARD_BTRFS_FORMAT_OPTS:--f -K} "$SDCARD_PARTITION"
++    mkfs.btrfs ${STEAMOS_BTRFS_SDCARD_BTRFS_FORMAT_OPTS:--f} "$SDCARD_PARTITION"
 +    MOUNT_DIR="/var/run/sdcard-mount"
 +    mkdir -p "$MOUNT_DIR"
 +    mount -o "${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_OPTS:-rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,ssd_spread}" "$SDCARD_PARTITION" "$MOUNT_DIR"

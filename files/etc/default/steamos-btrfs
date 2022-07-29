@@ -8,8 +8,8 @@ STEAMOS_BTRFS_SDCARD_FORMAT_FS="btrfs"
 STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_OPTS="rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,ssd_spread"
 # Defines the default subvolume to mount for the SD card if present (default: "@")
 STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL="@"
-# Defines the SD card format options to pass to mkfs.btrfs (default: "-f")
-STEAMOS_BTRFS_SDCARD_BTRFS_FORMAT_OPTS="-f"
+# Defines the SD card format options to pass to mkfs.btrfs (default: "-f -K")
+STEAMOS_BTRFS_SDCARD_BTRFS_FORMAT_OPTS="-f -K"
 # Defines the SD card mount options for ext4 (default: "rw,noatime,lazytime")
 STEAMOS_BTRFS_SDCARD_EXT4_MOUNT_OPTS="rw,noatime,lazytime"
 # Defines the SD card format options to pass to mkfs.ext4 (default: "-m 0 -O casefold -F")
