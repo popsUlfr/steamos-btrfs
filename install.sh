@@ -239,6 +239,7 @@ epatch()
 factory_pacman()
 {
   if cmd pacman --root . \
+    --config etc/pacman.conf \
     --dbpath usr/share/factory/var/lib/pacman \
     --cachedir /tmp/pacman-cache \
     --gpgdir etc/pacman.d/gnupg \
