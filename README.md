@@ -16,6 +16,7 @@ Btrfs with its transparent compression and deduplication capabilities can achiev
 - Btrfs, f2fs, ext4 formatted SD card support
 - Btrfs, f2fs, ext4 formating of SD card
 - Progress dialog and logging during the home conversion!
+- Install additional pacman packages into the rootfs automatically and persist through updates
 - **Survives updates and branch changes!**
 
 ![Btrfs /home conversion progress dialog](data/steamos-btrfs-conversion.webp "Btrfs /home conversion progress dialog")
@@ -41,6 +42,12 @@ or
 ```sh
 sudo rm /etc/systemd/system/steamos-convert-home-to-btrfs.service
 ```
+
+## Configuration
+
+Before the installation you may want to modify the [Configuration options](#configuration-options)
+* If it's a first time installation, edit `./files/etc/default/steamos-btrfs`.
+* Otherwise edit `/etc/default/steamos-btrfs` as it will take precedence over the local one.
 
 ## Install
 
@@ -89,12 +96,17 @@ When invoking the install script, supply the rootfs device node as first argumen
 
 (Do the installation twice for both slots)
 
-## Updating
+## Updating or changing config options
 
-At any time you can download the latest version and go through the installation again to enable the latest changes.
+At any time you can download the latest version and go through the installation again to enable the latest changes or simply apply changed settings.
 Disabling the home conversion won't have any effect on an already converted home partition.
 
 At times updates may change the default config options and you may want to merge the changes with your own: [Configuration options](#configuration-options)
+
+If you don't want to be prompted while running the script you can set the `NONINTERACTIVE=1` environment variable:
+```sh
+sudo NONINTERACTIVE=1 ./install.sh
+```
 
 ## Uninstall
 
@@ -139,7 +151,7 @@ The following mount options are used by default:
 
 A configuration file is available to change various filesystem options at [`/etc/default/steamos-btrfs`](files/etc/default/steamos-btrfs).
 
-- `STEAMOS_BTRFS_HOME_MOUNT_OPTS`           : the mount options to use for mounting the `/home` partition. Changing only this variable will not have any effect if the conversion is already done. `/etc/fstab` would need to be edited to reflect the new values.
+- `STEAMOS_BTRFS_HOME_MOUNT_OPTS`           : the mount options to use for mounting the `/home` partition. Changing only this variable will not have any effect if the conversion is already done. `/etc/fstab` would need to be edited to reflect the new values and you can do this easily by running the installation script again [`./install.sh`](install.sh).
 - `STEAMOS_BTRFS_HOME_MOUNT_SUBVOL`         : the root subvolume to use when mounting. Changing only this variable will not have any effect if the conversion is already done. A new subvolume with the desired name would need to be created and `/etc/fstab` would need to be edited to reflect the new values.
 - `STEAMOS_BTRFS_SDCARD_FORMAT_FS`          : allows you to specify what new blank SD cards will be formatted as. One of `btrfs`, `f2fs`, `ext4`.
 - `STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_OPTS`   : the btrfs mount options for btrfs formatted SD cards.
@@ -149,6 +161,7 @@ A configuration file is available to change various filesystem options at [`/etc
 - `STEAMOS_BTRFS_SDCARD_EXT4_FORMAT_OPTS`   : flags to pass to `mkfs.ext4` during the format.
 - `STEAMOS_BTRFS_SDCARD_F2FS_MOUNT_OPTS`    : the f2fs mount options for f2fs formatted SD cards.
 - `STEAMOS_BTRFS_SDCARD_F2FS_FORMAT_OPTS`   : flags to pass to `mkfs.f2fs` during the format.
+- `STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS`  : additional pacman packages to install into the rootfs separated by spaces (e.g.: "compsize nfs-utils wireguard-tools ..."). You can install them easily immediately by running the installation script again [`./install.sh`](install.sh).
 
 If you changed the default options and want to reset them or want to benefit from updated default options you can do the following:
 
@@ -209,4 +222,3 @@ sudo compsize /home
 - [x] graphical progress bar during home conversion
 - [ ] deduplication service
 - [ ] easier installer (appimage, desktop file...)
-- [ ] small helper to change fstab mount options

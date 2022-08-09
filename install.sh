@@ -32,6 +32,8 @@ fi
 
 HOME_MOUNT_OPTS="${STEAMOS_BTRFS_HOME_MOUNT_OPTS:-defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag}"
 HOME_MOUNT_SUBVOL="${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL:-@}"
+IFS=" " read -r -a EXTRA_PKGS <<< "${STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS:-}"
+PKGS+=("${EXTRA_PKGS[@]}")
 
 die() { echo >&2 "!! $*"; exit 1; }
 readvar() { IFS= read -r -d '' "$1" || true; }
