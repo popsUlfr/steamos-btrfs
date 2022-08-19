@@ -406,8 +406,8 @@ cmd mount -o remount /etc || true
 # install the needed arch packages
 estat "Install the needed arch packages: ${PKGS[*]}"
 # Patch /etc/pacman.conf to replace non-existing jupiter-beta repo
-#einfo "Replace non-existing jupiter-beta repo in /etc/pacman.conf"
-#cmd sed -i 's/^\[jupiter-beta\]/[jupiter]/' etc/pacman.conf
+einfo "Replace non-existing jupiter-beta repo in /etc/pacman.conf"
+cmd sed -i 's/^\[jupiter-beta\]/[jupiter]/' etc/pacman.conf
 exit_pacman_cache() { if [[ -d /tmp/pacman-cache ]]; then cmd rm -rf /tmp/pacman-cache; fi; }
 onexiterr=(exit_pacman_cache "${onexiterr[@]}")
 cmd mkdir -p /tmp/pacman-cache
