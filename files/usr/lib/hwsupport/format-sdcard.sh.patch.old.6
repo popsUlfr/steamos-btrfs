@@ -1,6 +1,6 @@
---- stable/usr/lib/hwsupport/format-sdcard.sh	2022-08-12 21:54:43.000000000 +0200
-+++ work/usr/lib/hwsupport/format-sdcard.sh	2022-09-02 13:05:12.015999262 +0200
-@@ -79,7 +79,31 @@
+--- beta/usr/lib/hwsupport/format-sdcard.sh	2022-07-21 18:38:37.000000000 +0200
++++ work/usr/lib/hwsupport/format-sdcard.sh	2022-07-29 20:10:29.119186832 +0200
+@@ -79,7 +79,23 @@
  sync
  parted --script "$SDCARD_DEVICE" mklabel gpt mkpart primary 0% 100%
  sync
@@ -19,14 +19,6 @@
 +    mount -o "${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_OPTS:-rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,ssd_spread}" "$SDCARD_PARTITION" "$MOUNT_DIR"
 +    btrfs subvolume create "$MOUNT_DIR/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}"
 +    btrfs subvolume set-default "$MOUNT_DIR/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}"
-+    for d in "$MOUNT_DIR/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}"/steamapps/{downloading,temp} ; do
-+        if ! btrfs subvolume show "$d" &>/dev/null; then
-+            mkdir -p "$d"
-+            rm -rf "$d"
-+            btrfs subvolume create "$d"
-+            chattr +C "$d"
-+        fi
-+    done
 +    umount -l "$MOUNT_DIR"
 +    rmdir "$MOUNT_DIR"
 +fi

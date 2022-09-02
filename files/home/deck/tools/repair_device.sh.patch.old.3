@@ -1,5 +1,7 @@
---- stable/home/deck/tools/repair_device.sh	2022-06-06 11:11:14.722878785 +0200
-+++ work/home/deck/tools/repair_device.sh	2022-09-02 14:25:41.739618634 +0200
+mkfs.ext4 `-T huge` change and disableconverthome logic
+
+--- stable/home/deck/tools/repair_device.sh	2022-05-31 15:41:26.750655397 +0200
++++ work/home/deck/tools/repair_device.sh	2022-05-31 15:58:47.883716489 +0200
 @@ -70,6 +70,7 @@
  # Helper to format
  fmt_ext4()  { [[ $# -eq 2 && -n $1 && -n $2 ]] || die; cmd sudo mkfs.ext4 -F -L "$1" "$2"; }
@@ -21,7 +23,7 @@
    fi
  
    # clear the var partition (user data), but also if we are reinstalling the OS
-@@ -204,9 +209,30 @@
+@@ -204,9 +209,21 @@
  
    if [[ $writeHome = 1 ]]; then
      estat "Creating home partition..."
@@ -41,15 +43,6 @@
 +      mkdir -p "$MOUNT_DIR"
 +      mount -o "${STEAMOS_BTRFS_HOME_MOUNT_OPTS:-defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag}" "$(diskpart $FS_HOME)" "$MOUNT_DIR"
 +      btrfs subvolume create "$MOUNT_DIR/${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL:-@}"
-+      for d in "$MOUNT_DIR/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}"/deck/.local/share/Steam/steamapps/{downloading,temp} ; do
-+        if ! btrfs subvolume show "$d" &>/dev/null; then
-+          mkdir -p "$d"
-+          rm -rf "$d"
-+          btrfs subvolume create "$d"
-+          chattr +C "$d"
-+          chown -R 1000:1000 "$MOUNT_DIR/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}"/deck
-+        fi
-+      done
 +      umount -l "$MOUNT_DIR"
 +    fi
    fi

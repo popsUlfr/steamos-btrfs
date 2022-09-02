@@ -238,6 +238,18 @@ then
     exit 1
 fi
 echo "(100%) Balance done."
+echo "(100%) Set up Steam's 'downloading' and 'temp' folders as btrfs subvolumes and disable COW..."
+for d in "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL"/deck/.local/share/Steam/steamapps/{downloading,temp}
+do
+    if ! btrfs subvolume show "$d" &>/dev/null; then
+        cmd mkdir -p "$d"
+        cmd rm -rf "$d"
+        cmd btrfs subvolume create "$d"
+        cmd chattr +C "$d"
+        cmd chown -R deck:deck "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL"/deck
+    fi
+done
+echo "(100%) Set up Steam's 'downloading' and 'temp' folders as btrfs subvolumes and disable COW done."
 exit_umount_home
 onexit=("${onexit[@]:1}")
 echo "(100%) Btrfs conversion of $HOME_MOUNTPOINT done."

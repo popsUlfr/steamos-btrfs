@@ -435,6 +435,22 @@ then
 fi
 exit_var
 
+# set up Steam's 'downloading' and 'temp' folders as btrfs subvolumes and disable COW
+if [[ "$(blkid -o value -s TYPE "$HOME_DEVICE")" == "btrfs" ]]
+then
+  estat "Set up Steam's 'downloading' and 'temp' folders as btrfs subvolumes and disable COW"
+  for d in "$HOME_MOUNTPOINT"/deck/.local/share/Steam/steamapps/{downloading,temp}
+  do
+    if ! btrfs subvolume show "$d" &>/dev/null; then
+      cmd mkdir -p "$d"
+      cmd rm -rf "$d"
+      cmd btrfs subvolume create "$d"
+      cmd chattr +C "$d"
+      cmd chown -R 1000:1000 "$HOME_MOUNTPOINT"/deck
+    fi
+  done
+fi
+
 # determine if the user wants to automatically pull updates from gitlab
 if [[ "$NONINTERACTIVE" -ne 1 ]] ; then
   #Only update environment variable if interactive as to not overwrite it
