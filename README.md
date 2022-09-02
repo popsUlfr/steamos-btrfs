@@ -5,7 +5,9 @@ It will allow to mount btrfs, f2fs and ext4 formatted sd cards and will also for
 
 Btrfs with its transparent compression and deduplication capabilities can achieve impressive storage gains but also improve loading times because of less data being read.
 
-**WARNING!!!! If you decide to so, it will install a service that will attempt on the next boot to convert the ext4 /home partition into btrfs and depending on the already used storage this operation may fail or take a long time! (Haven't heard of cases of failed conversions so far though)**
+**WARNING!!!! If you decide to so, it will install a service that will attempt on the next boot to convert the ext4 /home partition into btrfs and depending on the already used storage this operation may fail or take a long time!**
+
+**Make sure you have at least 10-20% free space available before attempting the conversion (`df -h /home` 80-90% use with at least 10-20 GiB available space)**
 
 - https://wiki.archlinux.org/title/Btrfs
 - https://wiki.archlinux.org/title/F2FS
@@ -18,6 +20,7 @@ Btrfs with its transparent compression and deduplication capabilities can achiev
 - Progress dialog and logging during the home conversion!
 - Install additional pacman packages into the rootfs automatically and persist through updates
 - **Survives updates and branch changes!**
+- Steam's `downloading` and `temp` folders as subvolumes with COW disabled
 
 ![Btrfs /home conversion progress dialog](data/steamos-btrfs-conversion.webp "Btrfs /home conversion progress dialog")
 
@@ -55,41 +58,48 @@ Before the installation you may want to modify the [Configuration options](#conf
 The original files that have been changed are backed up with the `.orig` extension. Keep in mind that they are specifically changed to allow for a btrfs `/home`.
 It is safe to revert to the original files if the btrfs conversion was not attempted.
 
+**Please make sure you have enough free space before attempting the conversion. At least 10-20GiB and/or 10-20% free space should usually be fine.**
+
 ### From SteamOS
 
-If you haven't already done so, set a password for your user:
+If you haven't already done so, set a password for your user in a terminal:
 
 ```
 passwd
 ```
 
-Switch into Desktop mode, download the tarball from https://gitlab.com/popsulfr/steamos-btrfs/-/archive/main/steamos-btrfs-main.tar.gz, extract it and launch `./install.sh`
+**Switch into Desktop mode**, download the tarball from https://gitlab.com/popsulfr/steamos-btrfs/-/archive/main/steamos-btrfs-main.tar.gz, extract it and launch `./install.sh`
 
 or by opening a terminal and executing
 
-```
+```sh
 mkdir steamos-btrfs
 curl -sSL https://gitlab.com/popsulfr/steamos-btrfs/-/archive/main/steamos-btrfs-main.tar.gz | tar -xzf - -C steamos-btrfs --strip-components=1
 ./steamos-btrfs/install.sh
+```
+
+In case you want to install over SSH or without graphical environment (will assume the default options!):
+```sh
+sudo NONINTERACTIVE=1 ./steamos-btrfs/install.sh
 ```
 
 Follow the on-screen instructions and if you decide to convert your home to btrfs, on the next boot you'll see a progress dialog.
 
 ### From the SteamOS Recovery image
 
-#### Do you want to reimage SteamOS from scratch on your Steam Deck ?
+#### **Do you want to reimage SteamOS from scratch on your Steam Deck ?**
 
-Then the installation is the same as above. The repair script will be patched to format /home as btrfs during the reimaging of SteamOS.
+Then the installation is the same as above and your recovery image will be btrfs ready. The repair script will be patched to format /home as btrfs during the reimaging of SteamOS.
 
-```
+```sh
 sudo ~/tools/repair_reimage.sh
 ```
 
-#### Do you want to inject the btrfs payload into a SteamOS installation from the Recovery image ?
+#### **Do you want to inject the btrfs payload into a SteamOS installation from the Recovery image ?**
 
 When invoking the install script, supply the rootfs device node as first argument to prevent it from injecting into the Recovery image.
 
-```
+```sh
 ./steamos-btrfs/install.sh /dev/disk/by-partsets/A/rootfs
 ./steamos-btrfs/install.sh /dev/disk/by-partsets/B/rootfs
 ```
@@ -100,6 +110,7 @@ When invoking the install script, supply the rootfs device node as first argumen
 
 At any time you can download the latest version and go through the installation again to enable the latest changes or simply apply changed settings.
 Disabling the home conversion won't have any effect on an already converted home partition.
+You should still select the `Convert /home` option if you want to update the home partition's mount flags modified through `/etc/default/steamos-btrfs`.
 
 At times updates may change the default config options and you may want to merge the changes with your own: [Configuration options](#configuration-options)
 
@@ -151,11 +162,11 @@ The following mount options are used by default:
 
 A configuration file is available to change various filesystem options at [`/etc/default/steamos-btrfs`](files/etc/default/steamos-btrfs).
 
-- `STEAMOS_BTRFS_HOME_MOUNT_OPTS`           : the mount options to use for mounting the `/home` partition. Changing only this variable will not have any effect if the conversion is already done. `/etc/fstab` would need to be edited to reflect the new values and you can do this easily by running the installation script again [`./install.sh`](install.sh).
+- `STEAMOS_BTRFS_HOME_MOUNT_OPTS`           : the mount options to use for mounting the `/home` partition. Changing only this variable will not have any effect if the conversion is already done. `/etc/fstab` would need to be edited to reflect the new values and you can do this easily by running the installation script again [`./install.sh`](install.sh) (pick `Convert /home` again during installation).
 - `STEAMOS_BTRFS_HOME_MOUNT_SUBVOL`         : the root subvolume to use when mounting. Changing only this variable will not have any effect if the conversion is already done. A new subvolume with the desired name would need to be created and `/etc/fstab` would need to be edited to reflect the new values.
 - `STEAMOS_BTRFS_SDCARD_FORMAT_FS`          : allows you to specify what new blank SD cards will be formatted as. One of `btrfs`, `f2fs`, `ext4`.
 - `STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_OPTS`   : the btrfs mount options for btrfs formatted SD cards.
-- `STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL` : the default subvolume to mount if available. It also specified the default subvolume to create on newly formatted btrfs SD cards.
+- `STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL` : the default subvolume to mount if available. It also specifies the default subvolume to create on newly formatted btrfs SD cards.
 - `STEAMOS_BTRFS_SDCARD_BTRFS_FORMAT_OPTS`  : flags to pass to `mkfs.btrfs` during the format.
 - `STEAMOS_BTRFS_SDCARD_EXT4_MOUNT_OPTS`    : the ext4 mount options for ext4 formatted SD cards.
 - `STEAMOS_BTRFS_SDCARD_EXT4_FORMAT_OPTS`   : flags to pass to `mkfs.ext4` during the format.
@@ -205,6 +216,8 @@ sudo ./rmlint.sh -d -p -r -k
 sudo rm -r rmlint*
 ```
 
+**DISCLAIMER: in most cases running `duperemove` will not result in a lot of space improvements and is slow.**
+
 Then use `duperemove` which might take a while:
 ```sh
 sudo duperemove -r -d -h --hashfile=/home/duperemove.hash --skip-zeroes --lookup-extents=no /home
@@ -215,10 +228,26 @@ Check the used disk space again:
 sudo compsize /home
 ```
 
+## Steam preallocation woes
+
+The latest version attempts to replace Steam's `downloading` and `temp` folders (located in `Steam/steamapps/`) with btrfs subvolumes and COW disabled. This is to mitigate the issue of games downloaded through the Steam client not having the most optimal compression ratio.
+
+If you were already using this project or you think your games' space usage is less than ideal you may want to consider to defragment and balance your Steam library manually:
+
+For the internal storage:
+```sh
+sudo btrfs filesystem defrag -czstd -v -r -f /home/deck/.local/share/Steam/steamapps
+sudo balance start -m -v /home/deck/.local/share/Steam/steamapps
+```
+
+For your SD card:
+```sh
+sudo btrfs filesystem defrag -czstd -v -r -f /run/media/mmcblk0p1/steamapps
+sudo balance start -m -v /run/media/mmcblk0p1/steamapps
+```
+
 ## TODO
 
-- [x] Get some logging going during the conversion process
 - [ ] rootfs/slot user dialog selection
-- [x] graphical progress bar during home conversion
 - [ ] deduplication service
 - [ ] easier installer (appimage, desktop file...)
