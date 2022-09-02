@@ -1,6 +1,6 @@
 --- stable/usr/lib/hwsupport/format-sdcard.sh	2022-08-12 21:54:43.000000000 +0200
-+++ work/usr/lib/hwsupport/format-sdcard.sh	2022-09-02 16:24:10.173566910 +0200
-@@ -79,7 +79,32 @@
++++ work/usr/lib/hwsupport/format-sdcard.sh	2022-09-02 13:05:12.015999262 +0200
+@@ -79,7 +79,31 @@
  sync
  parted --script "$SDCARD_DEVICE" mklabel gpt mkpart primary 0% 100%
  sync
@@ -25,7 +25,6 @@
 +            rm -rf "$d"
 +            btrfs subvolume create "$d"
 +            chattr +C "$d"
-+            chown -R 1000:1000 "$MOUNT_DIR/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}"/steamapps
 +        fi
 +    done
 +    umount -l "$MOUNT_DIR"
