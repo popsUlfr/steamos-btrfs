@@ -237,13 +237,13 @@ If you were already using this project or you think your games' space usage is l
 For the internal storage:
 ```sh
 sudo btrfs filesystem defrag -czstd -v -r -f /home/deck/.local/share/Steam/steamapps
-sudo balance start -m -v /home/deck/.local/share/Steam/steamapps
+sudo btrfs balance start -m -v /home/deck/.local/share/Steam/steamapps
 ```
 
 For your SD card:
 ```sh
 sudo btrfs filesystem defrag -czstd -v -r -f /run/media/mmcblk0p1/steamapps
-sudo balance start -m -v /run/media/mmcblk0p1/steamapps
+sudo btrfs balance start -m -v /run/media/mmcblk0p1/steamapps
 ```
 
 ## TODO
