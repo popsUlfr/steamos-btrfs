@@ -11,7 +11,7 @@ VAR_DEVICE="${ROOTFS_DEVICE%/*}/var"
 VAR_MOUNTPOINT="/tmp/var"
 HOME_DEVICE="/dev/disk/by-partsets/shared/home"
 HOME_MOUNTPOINT="/home"
-PKGS=(f2fs-tools reiserfsprogs kdialog wmctrl)
+PKGS=(f2fs-tools reiserfsprogs kdialog wmctrl patch)
 NONINTERACTIVE="${NONINTERACTIVE:-0}"
 NOAUTOUPDATE="${NOAUTOUPDATE:-0}"
 if [[ -f /usr/share/steamos-btrfs/disableconverthome ]]
@@ -291,6 +291,38 @@ onexit=(exit_rootfs_ro "${onexit[@]}")
 
 cd "$ROOTFS_MOUNTPOINT"
 
+# install the needed arch packages
+estat "Install the needed arch packages: ${PKGS[*]}"
+# Patch /etc/pacman.conf to replace non-existing jupiter-beta repo
+einfo "Replace non-existing jupiter-beta repo in /etc/pacman.conf"
+cmd sed -i 's/^\[jupiter-beta\]/[jupiter]/' etc/pacman.conf
+exit_pacman_cache() { if [[ -d /tmp/pacman-cache ]]; then cmd rm -rf /tmp/pacman-cache; fi; }
+onexiterr=(exit_pacman_cache "${onexiterr[@]}")
+cmd mkdir -p /tmp/pacman-cache
+factory_pacman --cachedir /tmp/pacman-cache -Sy --needed "${PKGS[@]}"
+# patch the /usr/lib/manifest.pacman with the new packages
+if [[ -f usr/lib/manifest.pacman ]]
+then
+  estat "Patch the /usr/lib/manifest.pacman with the new packages"
+  head -n 1 usr/lib/manifest.pacman | wc -c | xargs -I'{}' truncate -s '{}' usr/lib/manifest.pacman
+  factory_pacman -Qiq | \
+    sed -n 's/^\(Name\|Version\)\s*:\s*\(\S\+\)\s*$/\2/p' | \
+    xargs -d'\n' -n 2 printf '%s %s\n' >> usr/lib/manifest.pacman
+fi
+exit_pacman_cache
+
+# synchronize the /var partition with the new pacman state if needed
+estat "Synchronize the /var partition with the new pacman state if needed"
+exit_var() { if [[ -d "$VAR_MOUNTPOINT" ]]; then cmd umount -l "$VAR_MOUNTPOINT" || true; cmd rmdir "$VAR_MOUNTPOINT" || true; fi; }
+onexiterr=(exit_var "${onexiterr[@]}")
+cmd mkdir -p "$VAR_MOUNTPOINT"
+cmd mount "$VAR_DEVICE" "$VAR_MOUNTPOINT"
+if [[ -d "$VAR_MOUNTPOINT"/lib/pacman ]]
+then
+  cmd cp -a -r -u usr/share/factory/var/lib/pacman/. "$VAR_MOUNTPOINT"/lib/pacman/
+fi
+exit_var
+
 # patch /etc/fstab to use temporary tmpfs /home
 if [[ "$NOCONVERTHOME" -ne 1 ]] && [[ -f "etc/fstab" ]]
 then
@@ -402,38 +434,6 @@ fi
 # try to remount /etc overlay to refresh the lowerdir otherwise the files look corrupted
 estat "Remount /etc overlay to refresh the installed files"
 cmd mount -o remount /etc || true
-
-# install the needed arch packages
-estat "Install the needed arch packages: ${PKGS[*]}"
-# Patch /etc/pacman.conf to replace non-existing jupiter-beta repo
-einfo "Replace non-existing jupiter-beta repo in /etc/pacman.conf"
-cmd sed -i 's/^\[jupiter-beta\]/[jupiter]/' etc/pacman.conf
-exit_pacman_cache() { if [[ -d /tmp/pacman-cache ]]; then cmd rm -rf /tmp/pacman-cache; fi; }
-onexiterr=(exit_pacman_cache "${onexiterr[@]}")
-cmd mkdir -p /tmp/pacman-cache
-factory_pacman --cachedir /tmp/pacman-cache -Sy --needed "${PKGS[@]}"
-# patch the /usr/lib/manifest.pacman with the new packages
-if [[ -f usr/lib/manifest.pacman ]]
-then
-  estat "Patch the /usr/lib/manifest.pacman with the new packages"
-  head -n 1 usr/lib/manifest.pacman | wc -c | xargs -I'{}' truncate -s '{}' usr/lib/manifest.pacman
-  factory_pacman -Qiq | \
-    sed -n 's/^\(Name\|Version\)\s*:\s*\(\S\+\)\s*$/\2/p' | \
-    xargs -d'\n' -n 2 printf '%s %s\n' >> usr/lib/manifest.pacman
-fi
-exit_pacman_cache
-
-# synchronize the /var partition with the new pacman state if needed
-estat "Synchronize the /var partition with the new pacman state if needed"
-exit_var() { if [[ -d "$VAR_MOUNTPOINT" ]]; then cmd umount -l "$VAR_MOUNTPOINT" || true; cmd rmdir "$VAR_MOUNTPOINT" || true; fi; }
-onexiterr=(exit_var "${onexiterr[@]}")
-cmd mkdir -p "$VAR_MOUNTPOINT"
-cmd mount "$VAR_DEVICE" "$VAR_MOUNTPOINT"
-if [[ -d "$VAR_MOUNTPOINT"/lib/pacman ]]
-then
-  cmd cp -a -r -u usr/share/factory/var/lib/pacman/. "$VAR_MOUNTPOINT"/lib/pacman/
-fi
-exit_var
 
 # set up Steam's 'downloading' and 'temp' folders as btrfs subvolumes and disable COW
 if [[ "$(blkid -o value -s TYPE "$HOME_DEVICE")" == "btrfs" ]]
