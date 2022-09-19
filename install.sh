@@ -293,9 +293,16 @@ cd "$ROOTFS_MOUNTPOINT"
 
 # install the needed arch packages
 estat "Install the needed arch packages: ${PKGS[*]}"
-# Patch /etc/pacman.conf to replace non-existing jupiter-beta repo
-einfo "Replace non-existing jupiter-beta repo in /etc/pacman.conf"
-cmd sed -i 's/^\[jupiter-beta\]/[jupiter]/' etc/pacman.conf
+# Patch /etc/pacman.conf if jupiter-beta does not exist
+if grep -q '^\[jupiter-beta\]' etc/pacman.conf
+then
+  ret_code="$(curl -sSLIo /dev/null -w '%{http_code}' 'https://steamdeck-packages.steamos.cloud/archlinux-mirror/jupiter-beta/os/x86_64/jupiter-beta.db')"
+  if [[ "$ret_code" != '200' ]]
+  then
+    einfo "Replace non-existing jupiter-beta repo in /etc/pacman.conf"
+    cmd sed -i 's/^\[jupiter-beta\]/[jupiter]/' etc/pacman.conf
+  fi
+fi
 exit_pacman_cache() { if [[ -d /tmp/pacman-cache ]]; then cmd rm -rf /tmp/pacman-cache; fi; }
 onexiterr=(exit_pacman_cache "${onexiterr[@]}")
 cmd mkdir -p /tmp/pacman-cache
