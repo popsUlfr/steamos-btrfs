@@ -1,11 +1,12 @@
---- beta/usr/lib/hwsupport/sdcard-mount.sh	2022-09-14 21:13:04.000000000 +0200
-+++ work/usr/lib/hwsupport/sdcard-mount.sh	2022-09-19 09:28:18.203131641 +0200
-@@ -69,8 +69,16 @@
+--- beta/usr/lib/hwsupport/sdcard-mount.sh	2022-06-24 17:40:55.000000000 +0200
++++ work/usr/lib/hwsupport/sdcard-mount.sh	2022-07-01 12:11:18.949404893 +0200
+@@ -69,9 +69,18 @@
      #    OPTS+=",users,gid=100,umask=000,shortname=mixed,utf8=1,flush"
      #fi
  
 -    # We need symlinks for Steam for now, so only automount ext4 as that'll Steam will format right now
 -    if [[ ${ID_FS_TYPE} != "ext4" ]]; then
+-      exit 1
 +    if [[ -f /etc/default/steamos-btrfs ]]; then
 +        source /etc/default/steamos-btrfs
 +    fi
@@ -16,10 +17,12 @@
 +    elif [[ ${ID_FS_TYPE} == "btrfs" ]]; then
 +        OPTS="${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_OPTS:-rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,ssd_spread}"
 +    else
-         echo "Error mounting ${DEVICE}: wrong fstype: ${ID_FS_TYPE} - ${dev_json}"
-         exit 2
++        # We need symlinks for Steam for now
++        exit 1
      fi
-@@ -81,6 +89,17 @@
+ 
+     if ! /bin/mount -o "${OPTS}" -- "${DEVICE}" "${MOUNT_POINT}"; then
+@@ -80,6 +89,17 @@
          exit 1
      fi
  
