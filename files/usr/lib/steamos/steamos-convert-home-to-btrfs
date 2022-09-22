@@ -17,6 +17,7 @@ if [[ -f /etc/default/steamos-btrfs ]]
 then
     source /etc/default/steamos-btrfs
 fi
+HOME_CONVERT_OPTS="${STEAMOS_BTRFS_HOME_CONVERT_OPTS}"
 HOME_MOUNT_OPTS="${STEAMOS_BTRFS_HOME_MOUNT_OPTS:-defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag}"
 HOME_MOUNT_SUBVOL="${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL:-@}"
 
@@ -138,7 +139,7 @@ fi
 echo "(  5%) Filesystem check done."
 # Convert to btrfs keeping label and uuid
 echo "(  5%) Start btrfs conversion..."
-if ! cmd btrfs-convert -L --uuid copy "$HOME_DEVICE"
+if ! cmd btrfs-convert --progress -L --uuid copy ${HOME_CONVERT_OPTS} "$HOME_DEVICE"
 then
     echo "(100%) Btrfs conversion error." >&2
     exit 1
