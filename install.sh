@@ -453,7 +453,15 @@ then
       cmd rm -rf "$d"
       cmd btrfs subvolume create "$d"
       cmd chattr +C "$d"
-      cmd chown -R 1000:1000 "$HOME_MOUNTPOINT"/deck
+      d_parts=("$HOME_MOUNTPOINT"/deck)
+      readarray -d'/' -t -O 1 d_parts <<<"${d#"${d_parts[0]}"/}"
+      i=1
+      for p in "${d_parts[@]:1}"
+      do
+        d_parts[$i]="${d_parts[$((i-1))]}/${p%[[:space:]]*}"
+        i=$((i+1))
+      done
+      cmd chown 1000:1000 "${d_parts[@]}"
     fi
   done
 fi

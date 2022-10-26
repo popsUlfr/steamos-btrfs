@@ -246,7 +246,15 @@ do
         cmd rm -rf "$d"
         cmd btrfs subvolume create "$d"
         cmd chattr +C "$d"
-        cmd chown -R deck:deck "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL"/deck
+        d_parts=("$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL"/deck)
+        readarray -d'/' -t -O 1 d_parts <<<"${d#"${d_parts[0]}"/}"
+        i=1
+        for p in "${d_parts[@]:1}"
+        do
+            d_parts[$i]="${d_parts[$((i-1))]}/${p%[[:space:]]*}"
+            i=$((i+1))
+        done
+        cmd chown deck:deck "${d_parts[@]}"
     fi
 done
 echo "(100%) Set up Steam's 'downloading' and 'temp' folders as btrfs subvolumes and disable COW done."
