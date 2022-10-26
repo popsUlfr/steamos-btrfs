@@ -1,5 +1,5 @@
-# Defines the options used by btrfs-convert to convert home from ext4 to btrfs (default: "-O no-holes --checksum xxhash")
-STEAMOS_BTRFS_HOME_CONVERT_OPTS="-O no-holes --checksum xxhash"
+# Defines the options used by btrfs-convert to convert home from ext4 to btrfs (default: "-L --uuid copy")
+STEAMOS_BTRFS_HOME_CONVERT_OPTS="-L --uuid copy"
 # Defines the mount options for the home partition (default: "defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag")
 STEAMOS_BTRFS_HOME_MOUNT_OPTS="defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag"
 # Defines the root subvolume of the home partition (default: "@")
