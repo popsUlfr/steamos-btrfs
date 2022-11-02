@@ -131,7 +131,7 @@ systemd-notify --ready --status="Start btrfs conversion of $HOME_MOUNTPOINT..."
 cmd umount -l "$HOME_DEVICE" &>/dev/null || true
 # Make sure the filesystem is clean
 echo "(  0%) Start filesystem check..."
-if ! cmd e2fsck -fvy "$HOME_DEVICE"
+if ! cmd e2fsck -fvy "$HOME_DEVICE" && [[ "$?" -gt 2 ]]
 then
     echo "(100%) Filesystem check error." >&2
     exit 1
