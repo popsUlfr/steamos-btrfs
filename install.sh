@@ -936,9 +936,9 @@ main() {
   cmd_handler
   update_check
   if [[ -f "${WORKDIR}/version" ]]; then
-    eprompt '' "This installer will inject the Btrfs payload into the system.\nVersion: $(head -n 1 "${WORKDIR}/version")" 'Proceed' 'Abort'
+    eprompt '' "This installer will inject the Btrfs payload into the system or update the existing one.\nVersion: $(head -n 1 "${WORKDIR}/version")" 'Proceed' 'Abort'
   else
-    eprompt '' 'This installer will inject the Btrfs payload into the system.' 'Proceed' 'Abort'
+    eprompt '' 'This installer will inject the Btrfs payload into the system or update the existing one.' 'Proceed' 'Abort'
   fi
   log_handler
   rootfs_device_selection
