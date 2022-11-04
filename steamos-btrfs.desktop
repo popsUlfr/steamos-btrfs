@@ -1,7 +1,7 @@
 #!/usr/bin/env xdg-open
 [Desktop Entry]
 Name=SteamOS Btrfs
-Exec=bash -c "t=\\"\\$(mktemp -d)\\" ; curl -sSL https://gitlab.com/popsulfr/steamos-btrfs/-/archive/wip/steamos-btrfs-wip.tar.gz | tar -xzf - -C \\"\\$t\\" --strip-components=1 ; \\"\\$t/install.sh\\" ; rm -rf \\"\\$t\\""
+Exec=bash -c "if [[ -f /usr/share/steamos-btrfs/install.sh ]] ; then /usr/share/steamos-btrfs/install.sh ; else t=\\"\\$(mktemp -d)\\" ; curl -sSL https://gitlab.com/popsulfr/steamos-btrfs/-/archive/wip/steamos-btrfs-wip.tar.gz | tar -xzf - -C \\"\\$t\\" --strip-components=1 ; \\"\\$t/install.sh\\" ; rm -rf \\"\\$t\\" ; fi"
 Icon=drive-harddisk
 Terminal=true
 Type=Application

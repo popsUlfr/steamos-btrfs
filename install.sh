@@ -887,6 +887,12 @@ fstrim_timer_enable() {
   ONEXITERR=("${ONEXITERR[@]:1}")
 }
 
+home_copy_desktop_file() {
+  eprint "Copy 'steamos-btrfs.desktop' file to the Desktop"
+  cmd cp -a "${WORKDIR}/steamos-btrfs.desktop" "${HOME_MOUNTPOINT}/deck/Desktop/" || true
+  cmd chown deck:deck "${HOME_MOUNTPOINT}/deck/Desktop/steamos-btrfs.desktop" || true
+}
+
 rootfs_inject_cleanup() {
   cd /
   if [[ -d "${ROOTFS_MOUNTPOINT}" ]]; then
@@ -916,6 +922,7 @@ rootfs_inject() {
   rootfs_copy_files
   home_steam_download_workaround
   fstrim_timer_enable
+  home_copy_desktop_file
   cmd btrfs property set "${ROOTFS_MOUNTPOINT}" ro true
   cmd umount -l "${ROOTFS_MOUNTPOINT}"
   cmd rm -rf "${ROOTFS_MOUNTPOINT}"
