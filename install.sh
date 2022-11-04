@@ -984,10 +984,10 @@ rootfs_inject() {
 }
 
 main() {
-  root_handler
   config_load
   cmd_handler
   update_check
+  root_handler
   if [[ -f "${WORKDIR}/version" ]]; then
     eprompt '' "This installer will inject the Btrfs payload into the system or update the existing one.\nVersion: $(head -n 1 "${WORKDIR}/version")" 'Proceed' 'Abort'
   else
