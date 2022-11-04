@@ -249,11 +249,15 @@ eprompt_password() {
     local resp=''
     while true; do
       if resp="$(zenity --title "${title}" --forms --separator $'\n' --text "${msg}" --add-password Password --add-password 'Confirm Password' 2>/dev/null)"; then
-        local pass1='' pass2=''
-        {
-          read -r pass1
-          read -r pass2
-        } < <(echo "${resp}")
+        local pass1='' pass2='' i=0
+        while read -r line; do
+          if [[ "${i}" -eq 0 ]]; then
+            pass1="${line}"
+          elif [[ "${i}" -eq 1 ]]; then
+            pass2="${line}"
+          fi
+          i=$((i+1))
+        done < <(echo "${resp}")
         if [[ "${pass1}" == "${pass2}" ]]; then
           pass="${pass1}"
           break
