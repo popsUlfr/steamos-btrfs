@@ -226,6 +226,55 @@ eprompt_error() {
   fi
 }
 
+eprompt_password() {
+  local title="${1:-}"
+  if [[ -n "${title}" ]]; then
+    title="SteamOS Btrfs - ${title}"
+  else
+    title='SteamOS Btrfs'
+  fi
+  local msg="${2:-}"
+  eprint "(${title}) ${msg}"
+  local pass=''
+  if is_true "${NOGUI}" || [[ -z "${DISPLAY:-}" ]] || is_true "${NONINTERACTIVE}" || [[ ! -t 0 ]]; then
+    passwd
+    return 0
+  elif command -v kdialog &>/dev/null; then
+    if pass="$(XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-KDE}" QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-kde}" kdialog --title "${title}" --newpassword "${msg}" 2>/dev/null)"; then
+      :
+    else
+      return 2
+    fi
+  elif command -v zenity &>/dev/null; then
+    local resp=''
+    while true; do
+      if resp="$(zenity --title "${title}" --forms --separator $'\n' --text "${msg}" --add-password Password --add-password 'Confirm Password' 2>/dev/null)"; then
+        local pass1='' pass2=''
+        {
+          read -r pass1
+          read -r pass2
+        } < <(echo -n "${resp}")
+        if [[ "${pass1}" == "${pass2}" ]]; then
+          pass="${pass1}"
+          break
+        else
+          eprompt_error 'Password error' 'The passwords do not match'
+        fi
+      else
+        return 2
+      fi
+    done
+  else
+    NOGUI=1 eprompt_password "$@"
+    return "$?"
+  fi
+  local err=''
+  if ! err="$(passwd -q < <(yes "${pass}") 2>&1 >/dev/null)"; then
+    eprompt_error 'Password error' "${err}"
+    return 1
+  fi
+}
+
 config_load() {
   local v='' \
     TMP_NONINTERACTIVE='' \
@@ -286,9 +335,13 @@ root_handler() {
   if [[ "${EUID}" -eq 0 ]]; then
     return
   fi
-  if is_true "${NONINTERACTIVE}" || [[ ! -t 0 ]]; then
+  if { is_true "${NONINTERACTIVE}" || [[ ! -t 0 ]]; } && ! sudo -n -v &>/dev/null; then
     eprint 'Please run as root.'
     return 1
+  fi
+  if [[ "$(passwd -S | cut -d' ' -f2)" == 'NP' ]] && ! sudo -n -v &>/dev/null; then
+    # user needs to set their password
+    eprompt_password 'Set the password' 'Set a new user password'
   fi
   local sudo_args=(
     NONINTERACTIVE="${NONINTERACTIVE}"
