@@ -273,7 +273,10 @@ eprompt_password() {
     return "$?"
   fi
   local err=''
-  if ! err="$(passwd -q < <(yes "${pass}") 2>&1 >/dev/null)"; then
+  if [[ -z "${pass}" ]]; then
+    eprompt_error 'Password error' 'Empty password'
+    return 1
+  elif ! err="$(passwd -q < <(yes "${pass}") 2>&1 >/dev/null)"; then
     eprompt_error 'Password error' "${err}"
     return 1
   fi
