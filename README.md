@@ -33,7 +33,7 @@ Btrfs with its transparent compression and deduplication capabilities can achiev
 
 **You can download the following easy to use .desktop installer:**
 
-[![Download installer](data/download-installer.png "Download installer")](https://gitlab.com/popsulfr/steamos-btrfs/-/raw/dev/steamos-btrfs.desktop?inline=false)
+[![Download installer](data/download-installer.png "Download installer")](https://gitlab.com/popsulfr/steamos-btrfs/-/raw/main/steamos-btrfs.desktop?inline=false)
 
 **CAUTION**: there's not an easy way back if you proceed! Once the /home partition is converted, you can not go back to ext4 and keep your files.
 The original files that have been changed are backed up with the `.orig` extension. Keep in mind that they are specifically changed to allow for a btrfs `/home`.
@@ -68,7 +68,7 @@ Before the installation you may want to modify the [Configuration options](#conf
 
 ```sh
 t="$(mktemp -d)"
-curl -sSL https://gitlab.com/popsulfr/steamos-btrfs/-/archive/dev/steamos-btrfs-dev.tar.gz | tar -xzf - -C "$t" --strip-components=1
+curl -sSL https://gitlab.com/popsulfr/steamos-btrfs/-/archive/main/steamos-btrfs-main.tar.gz | tar -xzf - -C "$t" --strip-components=1
 "$t/install.sh"
 rm -rf "$t"
 ```

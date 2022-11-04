@@ -35,7 +35,7 @@ VAR_MOUNTPOINT=''
 HOME_DEVICE='/dev/disk/by-partsets/shared/home'
 HOME_MOUNTPOINT='/home'
 PACMAN_CACHE=''
-GIT_BRANCH='dev'
+GIT_BRANCH='main'
 UPDATER_PATH=''
 
 SCRIPT="$0"
