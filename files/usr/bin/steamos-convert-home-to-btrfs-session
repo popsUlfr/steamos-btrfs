@@ -11,6 +11,7 @@ then
 fi
 
 # dark mode on
+export XDG_CURRENT_DESKTOP=KDE
 export QT_QPA_PLATFORMTHEME=kde
 
 kwin_x11 &
