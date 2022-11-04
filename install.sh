@@ -838,7 +838,7 @@ rootfs_copy_files() {
   ONEXITRESTORE=(rootfs_copy_files_cleanup "${ONEXITRESTORE[@]}")
 }
 
-rootfs_steam_download_workaround() {
+home_steam_download_workaround() {
   # set up Steam's 'downloading' and 'temp' folders as btrfs subvolumes and disable COW
   if [[ "$(blkid -o value -s TYPE "${HOME_DEVICE}")" == 'btrfs' ]]; then
     eprint "Set up Steam's 'downloading' and 'temp' folders as btrfs subvolumes and disable COW"
@@ -859,6 +859,32 @@ rootfs_steam_download_workaround() {
       fi
     done
   fi
+}
+
+fstrim_timer_enable_cleanup() {
+  if [[ -d "${VAR_MOUNTPOINT}" ]]; then
+    if mountpoint -q "${VAR_MOUNTPOINT}"; then
+      cmd umount -l "${VAR_MOUNTPOINT}" || true
+    fi
+    cmd rm -rf "${VAR_MOUNTPOINT}" || true
+  fi
+}
+
+fstrim_timer_enable() {
+  ONEXITERR=(fstrim_timer_enable_cleanup "${ONEXITERR[@]}")
+  # synchronize the /var partition with the new pacman state if needed
+  eprint 'Enable fstrim.timer for periodic TRIM'
+  VAR_MOUNTPOINT="$(mktemp -d)"
+  cmd mount "${VAR_DEVICE}" "${VAR_MOUNTPOINT}"
+  cmd mkdir -p "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/systemd/system/timers.target.wants"
+  cmd ln -s /usr/lib/systemd/system/fstrim.timer "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/systemd/system/timers.target.wants/fstrim.timer" || true
+  # try to remount /etc overlay to refresh the lowerdir otherwise the files look corrupted
+  eprint "Remount /etc overlay to refresh the changed files"
+  cmd mount -o remount /etc || true
+  cmd systemctl start fstrim.timer || true
+  cmd umount -l "${VAR_MOUNTPOINT}"
+  cmd rm -rf "${VAR_MOUNTPOINT}"
+  ONEXITERR=("${ONEXITERR[@]:1}")
 }
 
 rootfs_inject_cleanup() {
@@ -888,7 +914,8 @@ rootfs_inject() {
   rootfs_patch_files
   rootfs_remove_old_files
   rootfs_copy_files
-  rootfs_steam_download_workaround
+  home_steam_download_workaround
+  fstrim_timer_enable
   cmd btrfs property set "${ROOTFS_MOUNTPOINT}" ro true
   cmd umount -l "${ROOTFS_MOUNTPOINT}"
   cmd rm -rf "${ROOTFS_MOUNTPOINT}"
