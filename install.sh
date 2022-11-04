@@ -253,7 +253,7 @@ eprompt_password() {
         {
           read -r pass1
           read -r pass2
-        } < <(echo -n "${resp}")
+        } < <(echo "${resp}")
         if [[ "${pass1}" == "${pass2}" ]]; then
           pass="${pass1}"
           break
