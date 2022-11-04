@@ -1,7 +1,7 @@
 # SteamOS 3/Steam Deck Btrfs converter <img align="right" height="32" src="data/steamos-btrfs-logo.svg">
 
 This injector will install the necessary payload to keep a btrfs formatted /home even through system updates. You may also choose to only install the support for formatting and mounting of multiple filesystems for the SD cards.
-It will allow to mount btrfs, f2fs and ext4 formatted sd cards and will also force new sd cards to be formatted as btrfs by default or a user configured filesystem.
+It will allow to mount btrfs, f2fs and ext4 formatted SD cards and will also force new SD cards to be formatted as btrfs by default or a user configured filesystem.
 
 Btrfs with its transparent compression and deduplication capabilities can achieve impressive storage gains but also improve loading times because of less data being read.
 
@@ -21,8 +21,111 @@ Btrfs with its transparent compression and deduplication capabilities can achiev
 - Install additional pacman packages into the rootfs automatically and persist through updates
 - **Survives updates and branch changes!**
 - Steam's `downloading` and `temp` folders as subvolumes with COW disabled
+- Update check
 
 ![Btrfs /home conversion progress dialog](data/steamos-btrfs-conversion.webp "Btrfs /home conversion progress dialog")
+
+## Install
+
+### Desktop installer
+
+**Switch into Desktop mode**
+
+**You can download the following easy to use .desktop installer:**
+
+[![Download installer](data/download-installer.png "Download installer")](https://gitlab.com/popsulfr/steamos-btrfs/-/raw/dev/steamos-btrfs.desktop?inline=false)
+
+**CAUTION**: there's not an easy way back if you proceed! Once the /home partition is converted, you can not go back to ext4 and keep your files.
+The original files that have been changed are backed up with the `.orig` extension. Keep in mind that they are specifically changed to allow for a btrfs `/home`.
+It is safe to revert to the original files if the btrfs conversion was not attempted.
+
+**Please make sure you have enough free space before attempting the conversion. At least 10-20GiB and/or 10-20% free space should usually be fine.**
+
+**Double-click the downloaded file**
+
+![Double-click the downloaded file](data/Screenshot_20221104_064629.png "Double-click the downloaded file")
+
+**Execute the .desktop file**
+
+![Execute](data/Screenshot_20221104_064706.png "Execute")
+
+**Press Continue to execute and follow the instructions.**
+
+**If no password has been set, you will be prompted for a new one.** 
+
+![Continue](data/Screenshot_20221104_064721.png "Continue")
+
+### CLI Installer
+
+#### Configuration
+
+Before the installation you may want to modify the [Configuration options](#configuration-options)
+* If it's a first time installation, edit `./files/etc/default/steamos-btrfs`.
+* Otherwise edit `/etc/default/steamos-btrfs` as it will take precedence over the local one.
+* You can also supply [command line arguments or environment variables](#command-line-arguments) to the installer
+
+#### CLI Install
+
+```sh
+t="$(mktemp -d)"
+curl -sSL https://gitlab.com/popsulfr/steamos-btrfs/-/archive/dev/steamos-btrfs-dev.tar.gz | tar -xzf - -C "$t" --strip-components=1
+"$t/install.sh"
+rm -rf "$t"
+```
+
+Once the payload is installed you can also restart the installer from the rootfs:
+
+```sh
+/usr/share/steamos-btrfs/install.sh
+```
+
+#### Command line arguments
+
+```
+SteamOS Btrfs
+Version: 1.0.0.20221104
+Usage: '/usr/share/steamos-btrfs/install.sh' [OPTION]... [rootfs dev]...
+Example: '/usr/share/steamos-btrfs/install.sh' --nogui /dev/disk/by-partsets/self/rootfs
+
+  --help                 show help
+  --noninteractive       run in noninteractive mode
+                         apply options from config files, env vars or defaults
+                         (env var: 'NONINTERACTIVE')
+                         (default: 0)
+  --nogui                run without gui prompts, force text prompts
+                         (env var: 'NOGUI')
+                         (default: 0)
+  --noautoupdate         disable automatic fetching of the latest script version when updating the system, changing channels or on version check
+                         (env var: 'NOAUTOUPDATE')
+                         (file flag: '/usr/share/steamos-btrfs/disableautoupdate')
+                         (default: 0)
+  --noconverthome        disable home conversion
+                         (env var: 'NOCONVERTHOME')
+                         (file flag: '/usr/share/steamos-btrfs/disableconverthome')
+                         (default: 0)
+  --customprompt PATH    set path to a custom prompt script or executable
+                         First argument supplied is the title, second argument the message to display, third argument label for yes, fourth argument label for no, fifth argument label for cancel
+                         Env var 'EPROMPT_VALUE_DEFAULT' holds the default value
+                         Should return 0 if OK, 1 if not, 2 if cancelled
+                         (env var: 'CUSTOMPROMPT')
+                         (default: '')
+
+Expert config options:
+  --STEAMOS_BTRFS_HOME_MOUNT_OPTS OPTS             set the /home mount options to use
+                                                   (env var: 'STEAMOS_BTRFS_HOME_MOUNT_OPTS')
+                                                   (default: 'defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag')
+  --STEAMOS_BTRFS_HOME_MOUNT_SUBVOL SUBVOL         set the /home subvolume name to use
+                                                   (env var: 'STEAMOS_BTRFS_HOME_MOUNT_SUBVOL')
+                                                   (default: '@')
+  --STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS PKGS    set the extra pacman packages to install
+                                                   (env var: 'STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS')
+                                                   (default: '')
+
+You can specify multiple 'rootfs dev's or none and it will default to '/dev/disk/by-partsets/self/rootfs'.
+Order of priority from highest to lowest for options is: command line flags, config files ('/usr/share/steamos-btrfs/files/etc/default/steamos-btrfs', '/usr/share/steamos-btrfs/files/etc/default/steamos-btrfs', '/etc/default/steamos-btrfs'), flag files ('/usr/share/steamos-btrfs/disableconverthome', '/usr/share/steamos-btrfs/disableautoupdate').
+
+A log file will be created at '/var/log/steamos-btrfs.log'.
+```
 
 ## Remaining issues and troubleshooting
 
@@ -46,69 +149,9 @@ or
 sudo rm /etc/systemd/system/steamos-convert-home-to-btrfs.service
 ```
 
-## Configuration
-
-Before the installation you may want to modify the [Configuration options](#configuration-options)
-* If it's a first time installation, edit `./files/etc/default/steamos-btrfs`.
-* Otherwise edit `/etc/default/steamos-btrfs` as it will take precedence over the local one.
-
-## Install
-
-**CAUTION**: there's not an easy way back if you proceed! Once the /home partition is converted, you can not go back to ext4 and keep your files.
-The original files that have been changed are backed up with the `.orig` extension. Keep in mind that they are specifically changed to allow for a btrfs `/home`.
-It is safe to revert to the original files if the btrfs conversion was not attempted.
-
-**Please make sure you have enough free space before attempting the conversion. At least 10-20GiB and/or 10-20% free space should usually be fine.**
-
-### From SteamOS
-
-If you haven't already done so, set a password for your user in a terminal:
-
-```
-passwd
-```
-
-**Switch into Desktop mode**, download the tarball from https://gitlab.com/popsulfr/steamos-btrfs/-/archive/main/steamos-btrfs-main.tar.gz, extract it and launch `./install.sh`
-
-or by opening a terminal and executing
-
-```sh
-mkdir steamos-btrfs
-curl -sSL https://gitlab.com/popsulfr/steamos-btrfs/-/archive/main/steamos-btrfs-main.tar.gz | tar -xzf - -C steamos-btrfs --strip-components=1
-./steamos-btrfs/install.sh
-```
-
-In case you want to install over SSH or without graphical environment (will assume the default options!):
-```sh
-sudo NONINTERACTIVE=1 ./steamos-btrfs/install.sh
-```
-
-Follow the on-screen instructions and if you decide to convert your home to btrfs, on the next boot you'll see a progress dialog.
-
-### From the SteamOS Recovery image
-
-#### **Do you want to reimage SteamOS from scratch on your Steam Deck ?**
-
-Then the installation is the same as above and your recovery image will be btrfs ready. The repair script will be patched to format /home as btrfs during the reimaging of SteamOS.
-
-```sh
-sudo ~/tools/repair_reimage.sh
-```
-
-#### **Do you want to inject the btrfs payload into a SteamOS installation from the Recovery image ?**
-
-When invoking the install script, supply the rootfs device node as first argument to prevent it from injecting into the Recovery image.
-
-```sh
-./steamos-btrfs/install.sh /dev/disk/by-partsets/A/rootfs
-./steamos-btrfs/install.sh /dev/disk/by-partsets/B/rootfs
-```
-
-(Do the installation twice for both slots)
-
 ## Updating or changing config options
 
-At any time you can download the latest version and go through the installation again to enable the latest changes or simply apply changed settings.
+At any time you can rerun the installer and let it download the latest version and go through the installation again to enable the latest changes or simply apply changed settings (`/usr/share/steamos-btrfs/install.sh`).
 Disabling the home conversion won't have any effect on an already converted home partition.
 You should still select the `Convert /home` option if you want to update the home partition's mount flags modified through `/etc/default/steamos-btrfs`.
 
@@ -116,7 +159,17 @@ At times updates may change the default config options and you may want to merge
 
 If you don't want to be prompted while running the script you can set the `NONINTERACTIVE=1` environment variable:
 ```sh
-sudo NONINTERACTIVE=1 ./install.sh
+NONINTERACTIVE=1 /usr/share/steamos-btrfs/install.sh
+```
+or as command line argument:
+```sh
+/usr/share/steamos-btrfs/install.sh --noninteractive
+```
+
+You may force off the gui prompts with `NOGUI=1` or `--nogui`, it should otherwise detect if a desktop environment is running and fallback to text prompts
+```sh
+NOGUI=1 /usr/share/steamos-btrfs/install.sh
+/usr/share/steamos-btrfs/install.sh --nogui
 ```
 
 ## Uninstall
@@ -145,6 +198,7 @@ The following mount options are used by default:
 - `autodefrag`: small random writes are queued up for defragmentation, invests more effort during writes to achieve as much contiguous data as possible. Interesting for games where more fragmentation can lead to loading stutter.
 - `subvol=@`: by default it will create a subvolume `@` (can be changed in the config) which is used as real root of the filesystem. SD Cards formatted as btrfs will be searched for the `@` subvolume or fallback to `/`.
 - `ssd_spread`:  attempts to allocate into bigger and aligned chunks of unused space for a potential performance boost on SD cards.
+- `commit`: (not by default) the commit interval, you may achieve good results by raising it to something like 120 seconds `commit=120` especially on the SD card
 
 ### F2FS mount options
 
@@ -173,7 +227,7 @@ A configuration file is available to change various filesystem options at [`/etc
 - `STEAMOS_BTRFS_SDCARD_EXT4_FORMAT_OPTS`   : flags to pass to `mkfs.ext4` during the format.
 - `STEAMOS_BTRFS_SDCARD_F2FS_MOUNT_OPTS`    : the f2fs mount options for f2fs formatted SD cards.
 - `STEAMOS_BTRFS_SDCARD_F2FS_FORMAT_OPTS`   : flags to pass to `mkfs.f2fs` during the format.
-- `STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS`  : additional pacman packages to install into the rootfs separated by spaces (e.g.: "compsize nfs-utils wireguard-tools ..."). You can install them easily immediately by running the installation script again [`./install.sh`](install.sh).
+- `STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS`  : additional pacman packages to install into the rootfs separated by spaces (e.g.: "compsize nfs-utils wireguard-tools ..."). You can install them easily immediately by running the installation script again [`/usr/share/steamos-btrfs/install.sh`](install.sh).
 
 If you changed the default options and want to reset them or want to benefit from updated default options you can do the following:
 
@@ -191,7 +245,18 @@ sudo mount -o remount /etc
 
 Using first [rmlint](https://rmlint.readthedocs.io/en/latest/) for fast efficient file deduplication and finally [duperemove](https://github.com/markfasheh/duperemove) for block based deduplication is the most effective way to potentially reduce disk space.
 
-Install the tools locally
+You can install the tools with the installer by editing the config file `/etc/default/steamos-btrfs` (sticks through upgrades and channel changes) or using the environment variable `STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS` or the command line argument `--STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS 'pkgs...'`:
+
+`/etc/default/steamos-btrfs`:
+```sh
+STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS="compsize duperemove rmlint"
+```
+```sh
+STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS="compsize duperemove rmlint" /usr/share/steamos-btrfs/install.sh
+/usr/share/steamos-btrfs/install.sh --STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS "compsize duperemove rmlint"
+```
+
+Alternatively, install the tools locally
 ```sh
 sudo pacman --cachedir /tmp -Sw compsize duperemove rmlint
 mkdir -p ~/.local/bin
@@ -249,6 +314,4 @@ sudo btrfs balance start -m -v /run/media/mmcblk0p1/steamapps
 
 ## TODO
 
-- [ ] rootfs/slot user dialog selection
 - [ ] deduplication service
-- [ ] easier installer (appimage, desktop file...)
