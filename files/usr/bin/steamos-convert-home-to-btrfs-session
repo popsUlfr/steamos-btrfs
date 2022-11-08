@@ -11,8 +11,20 @@ then
 fi
 
 # dark mode on
-export XDG_CURRENT_DESKTOP=KDE
-export QT_QPA_PLATFORMTHEME=kde
+mkdir -p /tmp/kdedefaults
+cat <<'EOF' > /tmp/kdedefaults/kdeglobals
+[General]
+ColorScheme=Vapor
+
+[Icons]
+Theme=breeze-dark
+
+[KDE]
+widgetStyle=Breeze
+EOF
+export XDG_CONFIG_DIRS="${XDG_CONFIG_DIRS:-/home/deck/.config/kdedefaults:/etc/xdg}:/tmp/kdedefaults"
+export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-KDE}"
+export QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-kde}"
 
 kwin_x11 &
 dbusref="$(kdialog --title "$TITLE" --progressbar "#### $TITLE ####")"

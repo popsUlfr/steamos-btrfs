@@ -127,7 +127,7 @@ eprompt() {
       return 2
     fi
   elif command -v kdialog &>/dev/null; then
-    if XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-KDE}" QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-kde}" kdialog --title "${title}" --yes-label "${yeslabel}" --no-label "${nolabel}" --cancel-label "${cancellabel}" --yesnocancel "${msg}" &>/dev/null; then
+    if XDG_CONFIG_DIRS="${XDG_CONFIG_DIRS:-/home/deck/.config/kdedefaults:/etc/xdg}" XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-KDE}" QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-kde}" kdialog --title "${title}" --yes-label "${yeslabel}" --no-label "${nolabel}" --cancel-label "${cancellabel}" --yesnocancel "${msg}" &>/dev/null; then
       return 0
     elif [[ "$?" -eq 1 ]]; then
       return 1
@@ -177,7 +177,7 @@ eprompt_list() {
         list+=("${opt}" "${opt}" off)
       fi
     done
-    if XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-KDE}" QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-kde}" kdialog --title "${title}" --separate-output --checklist "${header}" "${list[@]}" 2>/dev/null; then
+    if XDG_CONFIG_DIRS="${XDG_CONFIG_DIRS:-/home/deck/.config/kdedefaults:/etc/xdg}" XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-KDE}" QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-kde}" kdialog --title "${title}" --separate-output --checklist "${header}" "${list[@]}" 2>/dev/null; then
       return 0
     else
       return 2
@@ -214,7 +214,7 @@ eprompt_error() {
   if is_true "${NOGUI}" || [[ -z "${DISPLAY:-}" ]] || is_true "${NONINTERACTIVE}" || [[ ! -t 0 ]]; then
     :
   elif command -v kdialog &>/dev/null; then
-    if XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-KDE}" QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-kde}" kdialog --title "${title}" --error "${msg}" &>/dev/null; then
+    if XDG_CONFIG_DIRS="${XDG_CONFIG_DIRS:-/home/deck/.config/kdedefaults:/etc/xdg}" XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-KDE}" QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-kde}" kdialog --title "${title}" --error "${msg}" &>/dev/null; then
       :
     fi
   elif command -v zenity &>/dev/null; then
@@ -240,7 +240,7 @@ eprompt_password() {
     passwd
     return 0
   elif command -v kdialog &>/dev/null; then
-    if pass="$(XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-KDE}" QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-kde}" kdialog --title "${title}" --newpassword "${msg}" 2>/dev/null)"; then
+    if pass="$(XDG_CONFIG_DIRS="${XDG_CONFIG_DIRS:-/home/deck/.config/kdedefaults:/etc/xdg}" XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-KDE}" QT_QPA_PLATFORMTHEME="${QT_QPA_PLATFORMTHEME:-kde}" kdialog --title "${title}" --newpassword "${msg}" 2>/dev/null)"; then
       :
     else
       return 2
