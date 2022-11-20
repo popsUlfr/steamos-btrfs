@@ -1,5 +1,5 @@
 --- main/usr/lib/hwsupport/format-device.sh	2022-11-02 00:49:16.000000000 +0100
-+++ work/usr/lib/hwsupport/format-device.sh	2022-11-20 17:58:16.312287957 +0100
++++ work/usr/lib/hwsupport/format-device.sh	2022-11-02 12:50:53.891635841 +0100
 @@ -111,7 +111,34 @@
  sync
  parted --script "$STORAGE_DEVICE" mklabel gpt mkpart primary 0% 100%
@@ -10,14 +10,14 @@
 +    source /etc/default/steamos-btrfs
 +fi
 +if [[ "$STEAMOS_BTRFS_SDCARD_FORMAT_FS" == "ext4" ]]; then
-+    mkfs.ext4 -E "$EXTENDED_OPTIONS" ${STEAMOS_BTRFS_SDCARD_EXT4_FORMAT_OPTS:--m 0 -O casefold -F} "$STORAGE_PARTITION"
++    mkfs.ext4 -E "$EXTENDED_OPTIONS" ${STEAMOS_BTRFS_SDCARD_EXT4_FORMAT_OPTS:--m 0 -O casefold -F} "$SDCARD_PARTITION"
 +elif [[ "$STEAMOS_BTRFS_SDCARD_FORMAT_FS" == "f2fs" ]]; then
-+    mkfs.f2fs ${STEAMOS_BTRFS_SDCARD_F2FS_FORMAT_OPTS:--O encrypt,extra_attr,inode_checksum,sb_checksum,casefold,compression -C utf8 -f} "$STORAGE_PARTITION"
++    mkfs.f2fs ${STEAMOS_BTRFS_SDCARD_F2FS_FORMAT_OPTS:--O encrypt,extra_attr,inode_checksum,sb_checksum,casefold,compression -C utf8 -f} "$SDCARD_PARTITION"
 +else
-+    mkfs.btrfs ${STEAMOS_BTRFS_SDCARD_BTRFS_FORMAT_OPTS:--f -K} "$STORAGE_PARTITION"
++    mkfs.btrfs ${STEAMOS_BTRFS_SDCARD_BTRFS_FORMAT_OPTS:--f -K} "$SDCARD_PARTITION"
 +    MOUNT_DIR="/var/run/sdcard-mount"
 +    mkdir -p "$MOUNT_DIR"
-+    mount -o "${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_OPTS:-rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,ssd_spread}" "$STORAGE_PARTITION" "$MOUNT_DIR"
++    mount -o "${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_OPTS:-rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,ssd_spread}" "$SDCARD_PARTITION" "$MOUNT_DIR"
 +    btrfs subvolume create "$MOUNT_DIR/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}"
 +    btrfs subvolume set-default "$MOUNT_DIR/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}"
 +    for d in "$MOUNT_DIR/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}"/steamapps/{downloading,temp} ; do
