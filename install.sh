@@ -33,6 +33,7 @@ ROOTFS_MOUNTPOINT=''
 VAR_DEVICE=''
 VAR_MOUNTPOINT=''
 HOME_DEVICE='/dev/disk/by-partsets/shared/home'
+HOME_DEVICE_STATIC='/dev/disk/by-partsets/shared/home'
 HOME_MOUNTPOINT='/home'
 PACMAN_CACHE=''
 GIT_BRANCH='main'
@@ -887,7 +888,7 @@ rootfs_fstab_patch() {
   fi
   if [[ "$(blkid -o value -s TYPE "${HOME_DEVICE}")" != 'ext4' ]]; then
     eprint "Patch /etc/fstab to use btrfs for ${HOME_MOUNTPOINT}"
-    cmd sed -i 's#^\S\+\s\+'"${HOME_MOUNTPOINT}"'\s\+\S\+\s\+.*$#'"${HOME_DEVICE}"' '"${HOME_MOUNTPOINT}"' btrfs '"${STEAMOS_BTRFS_HOME_MOUNT_OPTS}"',subvol='"${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL}"' 0 0#' "${fstab_files[@]}"
+    cmd sed -i 's#^\S\+\s\+'"${HOME_MOUNTPOINT}"'\s\+\S\+\s\+.*$#'"${HOME_DEVICE_STATIC}"' '"${HOME_MOUNTPOINT}"' btrfs '"${STEAMOS_BTRFS_HOME_MOUNT_OPTS}"',subvol='"${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL}"' 0 0#' "${fstab_files[@]}"
   else
     eprint "Patch /etc/fstab to use temporary ${HOME_MOUNTPOINT} in tmpfs"
     cmd sed -i 's#^\S\+\s\+'"${HOME_MOUNTPOINT}"'\s\+\S\+\s\+.*$#tmpfs '"${HOME_MOUNTPOINT}"' tmpfs defaults,nofail,noatime,lazytime 0 0#' "${fstab_files[@]}"
