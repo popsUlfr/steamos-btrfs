@@ -1042,8 +1042,10 @@ fstrim_timer_enable() {
 
 home_copy_desktop_file() {
   eprint "Copy 'steamos-btrfs.desktop' file to the Desktop"
+  cmd mkdir -p "${HOME_MOUNTPOINT}"/deck/{Desktop,.local/share/applications} || true
   cmd cp -a "${WORKDIR}/steamos-btrfs.desktop" "${HOME_MOUNTPOINT}/deck/Desktop/" || true
-  cmd chown deck:deck "${HOME_MOUNTPOINT}/deck/Desktop/steamos-btrfs.desktop" || true
+  cmd cp -a "${WORKDIR}/steamos-btrfs.desktop" "${HOME_MOUNTPOINT}/deck/.local/share/applications/" || true
+  cmd chown deck:deck "${HOME_MOUNTPOINT}"/deck/{Desktop{,/steamos-btrfs.desktop},.local{,/share{,/applications{,/steamos-btrfs.desktop}}}} || true
 }
 
 rootfs_inject_cleanup() {
