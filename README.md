@@ -122,7 +122,7 @@ Expert config options:
                                                    (default: '')
 
 You can specify multiple 'rootfs dev's or none and it will default to '/dev/disk/by-partsets/self/rootfs'.
-Order of priority from highest to lowest for options is: command line flags, config files ('/usr/share/steamos-btrfs/files/etc/default/steamos-btrfs', '/usr/share/steamos-btrfs/files/etc/default/steamos-btrfs', '/etc/default/steamos-btrfs'), flag files ('/usr/share/steamos-btrfs/disableconverthome', '/usr/share/steamos-btrfs/disableautoupdate').
+Order of priority from highest to lowest for options is: command line flags, env vars, config files ('/usr/share/steamos-btrfs/files/etc/default/steamos-btrfs', '/usr/share/steamos-btrfs/files/etc/default/steamos-btrfs', '/etc/default/steamos-btrfs'), flag files ('/usr/share/steamos-btrfs/disableconverthome', '/usr/share/steamos-btrfs/disableautoupdate').
 
 A log file will be created at '/var/log/steamos-btrfs.log'.
 ```
@@ -205,7 +205,6 @@ The following mount options are used by default:
 - `noatime,lazytime`: to keep writes to a minimum
 - `compress_algorithm=zstd`: use zstd compression. You can set a specific compression level by appending `:<level>` to the type e.g.: `compress_algorithm=zstd:6`. The default level is 3 and going over 6 is rarely worth it (compression/decompression complexity grows quickly after that).
 - `compress_chksum`: verify compressed blocks with a checksum
-- `whint_mode=fs-based`: optimize fs-log management
 - `atgc,gc_merge`: use better garbage collector, async garbage collection
 
 ### ext4 mount options
