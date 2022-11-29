@@ -451,7 +451,7 @@ Expert config options:
                                                    (default: '${STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS_DEFAULT}')
 
 You can specify multiple 'rootfs dev's or none and it will default to '${ROOTFS_DEVICE}'.
-Order of priority from highest to lowest for options is: command line flags, config files ('${STEAMOS_BTRFS_INSTALL_PATH}/files/${CONFIGFILE#/}', '${WORKDIR}/files/${CONFIGFILE#/}', '${CONFIGFILE}'), flag files ('${NOCONVERTHOME_FILE_FLAG}', '${NOAUTOUPDATE_FILE_FLAG}').
+Order of priority from highest to lowest for options is: command line flags, env vars, config files ('${STEAMOS_BTRFS_INSTALL_PATH}/files/${CONFIGFILE#/}', '${WORKDIR}/files/${CONFIGFILE#/}', '${CONFIGFILE}'), flag files ('${NOCONVERTHOME_FILE_FLAG}', '${NOAUTOUPDATE_FILE_FLAG}').
 
 A log file will be created at '${LOGFILE}'.
 EOF
@@ -701,6 +701,23 @@ log_handler() {
     printf '#### %(%F %T)T ####\n'
     if [[ -f "${WORKDIR}/version" ]]; then
       eprint "Version: $(head -n 1 "${WORKDIR}/version")"
+    fi
+    eprint "Command-line arguments: ${SCRIPT_ARGS[*]@Q}"
+    eprint 'Env vars:'
+    eprint "\tNONINTERACTIVE: ${NONINTERACTIVE}"
+    eprint "\tNOGUI: ${NOGUI}"
+    eprint "\tNOAUTOUPDATE: ${NOAUTOUPDATE}"
+    eprint "\tNOCONVERTHOME: ${NOCONVERTHOME}"
+    eprint "\tSTEAMOS_BTRFS_HOME_MOUNT_OPTS: ${STEAMOS_BTRFS_HOME_MOUNT_OPTS}"
+    eprint "\tSTEAMOS_BTRFS_HOME_MOUNT_SUBVOL: ${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL}"
+    eprint "\tSTEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS: ${STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS}"
+    if [[ -f "${CONFIGFILE}" ]]; then
+      eprint "${CONFIGFILE}:"
+      cat "${CONFIGFILE}"
+    fi
+    if [[ -f '/etc/os-release' ]]; then
+      eprint '/etc/os-release:'
+      cat '/etc/os-release'
     fi
   fi
 }
