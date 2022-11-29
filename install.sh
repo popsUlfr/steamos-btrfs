@@ -256,7 +256,7 @@ eprompt_password() {
           elif [[ "${i}" -eq 1 ]]; then
             pass2="${line}"
           fi
-          i=$((i+1))
+          i=$((i + 1))
         done < <(echo "${resp}")
         if [[ "${pass1}" == "${pass2}" ]]; then
           pass="${pass1}"
@@ -390,13 +390,20 @@ EOF
 }
 
 find_partset_rootfs() {
-  find /dev/disk/by-partsets/{self,other,A,B} \
+  local rootfs_dev="${1:?'Missing rootfs'}"
+  local vrootfs_dev=''
+  vrootfs_dev="$(find /dev/disk/by-partsets/{self,other,shared,*} \
     -mindepth 1 \
     -maxdepth 1 \
     -name rootfs \
-    -exec sh -c '[ "$(realpath "$1")" = "$2" ]' _ '{}' "$(realpath "${1:?'Missing rootfs'}")" \; \
+    -exec sh -c '[ "$(realpath "$1")" = "$2" ]' _ '{}' "$(realpath "${rootfs_dev}")" \; \
     -print \
-    -quit
+    -quit)"
+  if [[ -n "${vrootfs_dev}" ]]; then
+    echo "${vrootfs_dev}"
+  elif [[ "$(blkid -o value -s LABEL "${rootfs_dev}")" == 'rootfs' && "$(blkid -o value -s TYPE "${rootfs_dev}")" == 'btrfs' ]]; then
+    echo "${rootfs_dev}"
+  fi
 }
 
 help() {
@@ -599,10 +606,92 @@ factory_pacman() {
 }
 
 list_rootfs_devices() {
-  find /dev/disk/by-partsets/{self,other,A,B} \
-    -mindepth 1 \
-    -maxdepth 1 \
-    -name rootfs
+  local rootfs_devs=()
+  readarray -d '' -t rootfs_devs < <(find /dev/disk/by-partsets/{self,other,shared,*} -mindepth 1 -maxdepth 1 -name rootfs -print0)
+  local i=0
+  while [[ "${i}" -lt "${#rootfs_devs[@]}" ]]; do
+    local rfs_dev="${rootfs_devs[${i}]}"
+    local found=0
+    for rfs_dev_o in "${rootfs_devs[@]:0:${i}}"; do
+      if [[ "${rfs_dev_o}" == "${rfs_dev}" ]]; then
+        found=1
+        break
+      fi
+    done
+    if [[ "${found}" -eq 1 ]]; then
+      rootfs_devs=("${rootfs_devs[@]:0:${i}}" "${rootfs_devs[@]:$((i + 1))}")
+    else
+      i=$((i + 1))
+    fi
+  done
+  local rootfs_devs_x=()
+  readarray -t rootfs_devs_x < <(blkid -t LABEL=rootfs -o device | sort)
+  for rfs_dev_x in "${rootfs_devs_x[@]}"; do
+    if [[ "$(blkid -o value -s TYPE "${rfs_dev_x}")" != 'btrfs' ]]; then
+      continue
+    fi
+    local found=0
+    for rfs_dev in "${rootfs_devs[@]}"; do
+      if [[ "$(realpath "${rfs_dev}")" == "$(realpath "${rfs_dev_x}")" ]]; then
+        found=1
+        break
+      fi
+    done
+    if [[ "${found}" -ne 1 ]]; then
+      rootfs_devs+=("${rfs_dev_x}")
+    fi
+  done
+  (
+    IFS=$'\n'
+    echo "${rootfs_devs[*]}"
+  )
+}
+
+# $1 rootfs device
+#
+# Returns associated var device
+determine_var_device() {
+  local rootfs_dev=''
+  rootfs_dev="$(realpath "$1")"
+  local rootfs_devs=()
+  local var_devs=()
+  readarray -t rootfs_devs < <(blkid -t LABEL=rootfs -o device | grep '^'"${rootfs_dev%[[:digit:]]*}" | sort -u)
+  readarray -t var_devs < <(blkid -t LABEL=var -o device | grep '^'"${rootfs_dev%[[:digit:]]*}" | sort -u)
+  local pos=0
+  for rfs_d in "${rootfs_devs[@]}"; do
+    if [[ "${rfs_d}" == "${rootfs_dev}" ]]; then
+      break
+    fi
+    pos=$((pos + 1))
+  done
+  local var_dev="${var_devs[${pos}]}"
+  local vvar_dev=''
+  vvar_dev="$(find /dev/disk/by-partsets/{self,other,shared,*} -mindepth 1 -maxdepth 1 -name var -exec sh -c '[ "$(realpath "$1")" = "$2" ]' _ '{}' "${var_dev}" \; -print -quit)"
+  if [[ -n "${vvar_dev}" ]]; then
+    echo "${vvar_dev}"
+  else
+    echo "${var_dev}"
+  fi
+}
+
+# $1 rootfs device
+#
+# Returns associated home device
+determine_home_device() {
+  local rootfs_dev=''
+  rootfs_dev="$(realpath "$1")"
+  local rootfs_devs=()
+  local home_devs=()
+  readarray -t rootfs_devs < <(blkid -t LABEL=rootfs -o device | grep '^'"${rootfs_dev%[[:digit:]]*}" | sort -u)
+  readarray -t home_devs < <(blkid -t LABEL=home -o device | grep '^'"${rootfs_dev%[[:digit:]]*}" | sort -u)
+  local home_dev="${home_devs[0]}"
+  local vhome_dev=''
+  vhome_dev="$(find /dev/disk/by-partsets/{self,other,shared,*} -mindepth 1 -maxdepth 1 -name home -exec sh -c '[ "$(realpath "$1")" = "$2" ]' _ '{}' "${home_dev}" \; -print -quit)"
+  if [[ -n "${vhome_dev}" ]]; then
+    echo "${vhome_dev}"
+  else
+    echo "${home_dev}"
+  fi
 }
 
 log_handler() {
@@ -967,7 +1056,8 @@ rootfs_inject_cleanup() {
 # $1 the rootfs device
 rootfs_inject() {
   ROOTFS_DEVICE="${1:?'Missing rootfs device.'}"
-  VAR_DEVICE="${ROOTFS_DEVICE%/*}/var"
+  VAR_DEVICE="$(determine_var_device "${ROOTFS_DEVICE}")"
+  HOME_DEVICE="$(determine_home_device "${ROOTFS_DEVICE}")"
   ONEXITRESTORE=()
   ONEXITERR=(rootfs_inject_cleanup "${ONEXITERR[@]}")
   ROOTFS_MOUNTPOINT="$(mktemp -d)"
@@ -1002,7 +1092,16 @@ main() {
   fi
   log_handler
   rootfs_device_selection
-  if [[ "$(blkid -o value -s TYPE "${HOME_DEVICE}")" != 'btrfs' ]]; then
+  local ask_converthome=0
+  for rootfs_dev in "${ROOTFS_DEVICES[@]}"; do
+    local home_dev=''
+    home_dev="$(determine_home_device "${rootfs_dev}")"
+    if [[ "$(blkid -o value -s TYPE "${home_dev}")" != 'btrfs' ]]; then
+      ask_converthome=1
+      break
+    fi
+  done
+  if [[ "${ask_converthome}" -eq 1 ]]; then
     local converthome
     if is_true "${NOCONVERTHOME}"; then
       converthome=0
@@ -1034,10 +1133,24 @@ main() {
   fi
   trap err ERR
   trap quit SIGINT SIGQUIT SIGTERM EXIT
-  for rootfs in "${ROOTFS_DEVICES[@]}"; do
-    rootfs_inject "${rootfs}"
+  local i=0
+  for rootfs_dev in "${ROOTFS_DEVICES[@]}"; do
+    # only install once into unique rootfs devs
+    local rootfs_dev_real=''
+    rootfs_dev_real="$(realpath "${rootfs_dev}")"
+    local found=0
+    for rfs_dev_o in "${ROOTFS_DEVICES[@]:0:${i}}"; do
+      if [[ "$(realpath "${rfs_dev_o}")" == "${rootfs_dev_real}" ]]; then
+        found=1
+        break
+      fi
+    done
+    if [[ "${found}" -ne 1 ]]; then
+      rootfs_inject "${rootfs_dev}"
+    fi
+    i=$((i + 1))
   done
-  if ! is_true "${NOCONVERTHOME}" && [[ "$(blkid -o value -s TYPE "${HOME_DEVICE}")" != 'btrfs' ]]; then
+  if ! is_true "${NOCONVERTHOME}" && [[ "${ask_converthome}" -eq 1 ]]; then
     if EPROMPT_VALUE_DEFAULT=0 eprompt 'Installation Complete' 'Done. You can reboot the system now or reimage the system.\n\nChoose Proceed to reboot the Steam Deck now, or Cancel to stay.\nThe conversion of the /home partition will happen on the next reboot if you selected the option. Once it is done, it will reboot just one more time.' 'Reboot now' 'Reboot later'; then
       cmd systemctl reboot
     fi
