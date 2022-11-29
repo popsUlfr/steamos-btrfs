@@ -38,6 +38,8 @@ HOME_MOUNTPOINT='/home'
 PACMAN_CACHE=''
 GIT_BRANCH='main'
 UPDATER_PATH=''
+oPATH="${PATH:-}"
+oLD_LIBRARY_PATH="${LD_LIBRARY_PATH:-/usr/local/lib:/usr/lib}"
 
 SCRIPT="$0"
 SCRIPT_ARGS=("$@")
@@ -1067,6 +1069,8 @@ home_copy_desktop_file() {
 }
 
 rootfs_inject_cleanup() {
+  export PATH="${oPATH}"
+  export LD_LIBRARY_PATH="${oLD_LIBRARY_PATH}"
   cd /
   if [[ -d "${ROOTFS_MOUNTPOINT}" ]]; then
     if mountpoint -q "${ROOTFS_MOUNTPOINT}"; then
@@ -1087,6 +1091,8 @@ rootfs_inject() {
   ROOTFS_MOUNTPOINT="$(mktemp -d)"
   eprint "Mount '${ROOTFS_DEVICE}' on '${ROOTFS_MOUNTPOINT}' and make it writable"
   cmd mount "${ROOTFS_DEVICE}" "${ROOTFS_MOUNTPOINT}"
+  export PATH="${oPATH}:${ROOTFS_MOUNTPOINT}/usr/bin"
+  export LD_LIBRARY_PATH="${oLD_LIBRARY_PATH}:${ROOTFS_MOUNTPOINT}/usr/lib"
   cmd btrfs property set "${ROOTFS_MOUNTPOINT}" ro false
   cd "${ROOTFS_MOUNTPOINT}"
   rootfs_install_packages
@@ -1098,6 +1104,8 @@ rootfs_inject() {
   fstrim_timer_enable
   home_copy_desktop_file
   cmd btrfs property set "${ROOTFS_MOUNTPOINT}" ro true
+  export PATH="${oPATH}"
+  export LD_LIBRARY_PATH="${oLD_LIBRARY_PATH}"
   cmd umount -l "${ROOTFS_MOUNTPOINT}"
   cmd rm -rf "${ROOTFS_MOUNTPOINT}"
   ONEXITERR=("${ONEXITERR[@]:1}")
