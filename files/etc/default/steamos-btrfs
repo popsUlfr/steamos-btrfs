@@ -16,9 +16,9 @@ STEAMOS_BTRFS_SDCARD_BTRFS_FORMAT_OPTS="-f -K"
 STEAMOS_BTRFS_SDCARD_EXT4_MOUNT_OPTS="rw,noatime,lazytime"
 # Defines the SD card format options to pass to mkfs.ext4 (default: "-m 0 -O casefold -F")
 STEAMOS_BTRFS_SDCARD_EXT4_FORMAT_OPTS="-m 0 -O casefold -F"
-# Defines the SD card mount options for f2fs (default: "rw,noatime,lazytime,compress_algorithm=zstd,compress_chksum,whint_mode=fs-based,atgc,gc_merge")
-STEAMOS_BTRFS_SDCARD_F2FS_MOUNT_OPTS="rw,noatime,lazytime,compress_algorithm=zstd,compress_chksum,whint_mode=fs-based,atgc,gc_merge"
-# Defines the SD card format options to pass to mkfs.f2fs (default: "-O encrypt,extra_attr,inode_checksum,sb_checksum,casefold,compression -C utf8 -f")
-STEAMOS_BTRFS_SDCARD_F2FS_FORMAT_OPTS="-O encrypt,extra_attr,inode_checksum,sb_checksum,casefold,compression -C utf8 -f"
+# Defines the SD card mount options for f2fs (default: "rw,noatime,lazytime,compress_algorithm=zstd,compress_chksum,atgc,gc_merge")
+STEAMOS_BTRFS_SDCARD_F2FS_MOUNT_OPTS="rw,noatime,lazytime,compress_algorithm=zstd,compress_chksum,atgc,gc_merge"
+# Defines the SD card format options to pass to mkfs.f2fs (default: "-O encrypt,extra_attr,inode_checksum,sb_checksum,casefold,compression -C utf8 -f -t 0")
+STEAMOS_BTRFS_SDCARD_F2FS_FORMAT_OPTS="-O encrypt,extra_attr,inode_checksum,sb_checksum,casefold,compression -C utf8 -f -t 0"
 # Defines additional pacman packages to install into the rootfs and persist through upgrades (e.g.: "compsize nfs-utils wireguard-tools ..." )
 STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS=""
