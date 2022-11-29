@@ -845,13 +845,17 @@ rootfs_install_packages() {
 
 rootfs_fstab_patch_cleanup() {
   if [[ -d "${VAR_MOUNTPOINT}" ]]; then
-    cmd mv -vf "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/fstab"{.orig,} || true
+    if [[ "$(blkid -o value -s TYPE "${HOME_DEVICE}")" != 'btrfs' ]]; then
+      cmd mv -vf "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/fstab"{.orig,} || true
+    fi
     if mountpoint -q "${VAR_MOUNTPOINT}"; then
       cmd umount -l "${VAR_MOUNTPOINT}" || true
     fi
     cmd rm -rf "${VAR_MOUNTPOINT}" || true
   fi
-  cmd mv -vf etc/fstab{.orig,} || true
+  if [[ "$(blkid -o value -s TYPE "${HOME_DEVICE}")" != 'btrfs' ]]; then
+    cmd mv -vf etc/fstab{.orig,} || true
+  fi
 }
 
 rootfs_fstab_patch_restore() {
@@ -883,10 +887,10 @@ rootfs_fstab_patch() {
   fi
   if [[ "$(blkid -o value -s TYPE "${HOME_DEVICE}")" != 'ext4' ]]; then
     eprint "Patch /etc/fstab to use btrfs for ${HOME_MOUNTPOINT}"
-    cmd sed -i 's#^\S\+\s\+'"${HOME_MOUNTPOINT}"'\s\+\(ext4\|tmpfs\|btrfs\)\s\+.*$#'"${HOME_DEVICE}"' '"${HOME_MOUNTPOINT}"' btrfs '"${STEAMOS_BTRFS_HOME_MOUNT_OPTS}"',subvol='"${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL}"' 0 0#' "${fstab_files[@]}"
+    cmd sed -i 's#^\S\+\s\+'"${HOME_MOUNTPOINT}"'\s\+\S\+\s\+.*$#'"${HOME_DEVICE}"' '"${HOME_MOUNTPOINT}"' btrfs '"${STEAMOS_BTRFS_HOME_MOUNT_OPTS}"',subvol='"${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL}"' 0 0#' "${fstab_files[@]}"
   else
     eprint "Patch /etc/fstab to use temporary ${HOME_MOUNTPOINT} in tmpfs"
-    cmd sed -i 's#^\S\+\s\+'"${HOME_MOUNTPOINT}"'\s\+ext4\s\+.*$#tmpfs '"${HOME_MOUNTPOINT}"' tmpfs defaults,nofail,noatime,lazytime 0 0#' "${fstab_files[@]}"
+    cmd sed -i 's#^\S\+\s\+'"${HOME_MOUNTPOINT}"'\s\+\S\+\s\+.*$#tmpfs '"${HOME_MOUNTPOINT}"' tmpfs defaults,nofail,noatime,lazytime 0 0#' "${fstab_files[@]}"
   fi
   cmd umount -l "${VAR_MOUNTPOINT}"
   cmd rm -rf "${VAR_MOUNTPOINT}"
