@@ -4,7 +4,7 @@ STEAMOS_BTRFS_HOME_CONVERT_OPTS="-L --uuid copy"
 STEAMOS_BTRFS_HOME_MOUNT_OPTS="defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag"
 # Defines the root subvolume of the home partition (default: "@")
 STEAMOS_BTRFS_HOME_MOUNT_SUBVOL="@"
-# Defines the filesystem to format the SD card as (default: "btrfs")
+# Defines the filesystem to format the SD card as (default: "btrfs"). One of btrfs, f2fs, ext4, fat, exfat, ntfs.
 STEAMOS_BTRFS_SDCARD_FORMAT_FS="btrfs"
 # Defines the SD card mount options for btrfs (default: "rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,ssd_spread")
 STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_OPTS="rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,ssd_spread"
@@ -20,5 +20,17 @@ STEAMOS_BTRFS_SDCARD_EXT4_FORMAT_OPTS="-m 0 -O casefold -F"
 STEAMOS_BTRFS_SDCARD_F2FS_MOUNT_OPTS="rw,noatime,lazytime,compress_algorithm=zstd,compress_chksum,atgc,gc_merge"
 # Defines the SD card format options to pass to mkfs.f2fs (default: "-O encrypt,extra_attr,inode_checksum,sb_checksum,casefold,compression -C utf8 -f -t 0")
 STEAMOS_BTRFS_SDCARD_F2FS_FORMAT_OPTS="-O encrypt,extra_attr,inode_checksum,sb_checksum,casefold,compression -C utf8 -f -t 0"
+# Defines the SD card mount options for fat (default: "rw,noatime,lazytime,uid=1000,gid=1000,utf8=1")
+STEAMOS_BTRFS_SDCARD_FAT_MOUNT_OPTS="rw,noatime,lazytime,uid=1000,gid=1000,utf8=1"
+# Defines the SD card format options to pass to mkfs.vfat (default: "-F 32 -I")
+STEAMOS_BTRFS_SDCARD_FAT_FORMAT_OPTS="-F 32 -I"
+# Defines the SD card mount options for exfat (default: "rw,noatime,lazytime,uid=1000,gid=1000")
+STEAMOS_BTRFS_SDCARD_EXFAT_MOUNT_OPTS="rw,noatime,lazytime,uid=1000,gid=1000"
+# Defines the SD card format options to pass to mkfs.exfat (default: "--pack-bitmap")
+STEAMOS_BTRFS_SDCARD_EXFAT_FORMAT_OPTS="--pack-bitmap"
+# Defines the SD card mount options for ntfs (default: "rw,noatime,lazytime,uid=1000,gid=1000,big_writes,umask=0022,ignore_case,windows_names")
+STEAMOS_BTRFS_SDCARD_NTFS_MOUNT_OPTS="rw,noatime,lazytime,uid=1000,gid=1000,big_writes,umask=0022,ignore_case,windows_names"
+# Defines the SD card format options to pass to mkfs.ntfs (default: "-f -F")
+STEAMOS_BTRFS_SDCARD_NTFS_FORMAT_OPTS="-f -F"
 # Defines additional pacman packages to install into the rootfs and persist through upgrades (e.g.: "compsize nfs-utils wireguard-tools ..." )
 STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS=""

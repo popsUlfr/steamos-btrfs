@@ -25,7 +25,7 @@ STEAMOS_BTRFS_HOME_MOUNT_SUBVOL_DEFAULT='@'
 STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS_DEFAULT=''
 CONFIGFILE='/etc/default/steamos-btrfs'
 LOGFILE='/var/log/steamos-btrfs.log'
-PKGS=(f2fs-tools reiserfsprogs kdialog wmctrl patch)
+PKGS=(f2fs-tools reiserfsprogs kdialog wmctrl patch exfatprogs)
 PKGS_SIZE="${#PKGS[@]}"
 ROOTFS_DEVICES=('/dev/disk/by-partsets/self/rootfs')
 ROOTFS_DEVICE='/dev/disk/by-partsets/self/rootfs'
@@ -600,8 +600,7 @@ factory_pacman() {
     --gpgdir etc/pacman.d/gnupg \
     --logfile /dev/null \
     --disable-download-timeout \
-    --noconfirm \
-    "$@"; then
+    "$@" < <(yes 'y'); then
     return 0
   else
     return 1
@@ -856,7 +855,7 @@ rootfs_install_packages() {
   VAR_MOUNTPOINT="$(mktemp -d)"
   cmd mount "${VAR_DEVICE}" "${VAR_MOUNTPOINT}"
   if [[ -d "${VAR_MOUNTPOINT}"/lib/pacman ]]; then
-    cmd cp -a -r -u usr/share/factory/var/lib/pacman/. "${VAR_MOUNTPOINT}"/lib/pacman/
+    cmd rsync -a --inplace --delete usr/share/factory/var/lib/pacman/ "${VAR_MOUNTPOINT}"/lib/pacman/
   fi
   cmd umount -l "${VAR_MOUNTPOINT}"
   cmd rm -rf "${VAR_MOUNTPOINT}"

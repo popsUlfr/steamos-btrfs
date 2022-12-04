@@ -1,0 +1,41 @@
+--- main/usr/lib/hwsupport/sdcard-mount.sh	2022-11-02 00:49:16.000000000 +0100
++++ work/usr/lib/hwsupport/sdcard-mount.sh	2022-11-29 16:06:30.192860215 +0100
+@@ -69,8 +69,17 @@
+     #    OPTS+=",users,gid=100,umask=000,shortname=mixed,utf8=1,flush"
+     #fi
+ 
+-    # We need symlinks for Steam for now, so only automount ext4 as that'll Steam will format right now
+-    if [[ ${ID_FS_TYPE} != "ext4" ]]; then
++    #### SteamOS Btrfs Begin ####
++    if [[ -f /etc/default/steamos-btrfs ]]; then
++        source /etc/default/steamos-btrfs
++    fi
++    if [[ ${ID_FS_TYPE} == "ext4" ]]; then
++        OPTS="${STEAMOS_BTRFS_SDCARD_EXT4_MOUNT_OPTS:-rw,noatime,lazytime}"
++    elif [[ ${ID_FS_TYPE} == "f2fs" ]]; then
++        OPTS="${STEAMOS_BTRFS_SDCARD_F2FS_MOUNT_OPTS:-rw,noatime,lazytime,compress_algorithm=zstd,compress_chksum,atgc,gc_merge}"
++    elif [[ ${ID_FS_TYPE} == "btrfs" ]]; then
++        OPTS="${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_OPTS:-rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,ssd_spread}"
++    else
+         echo "Error mounting ${DEVICE}: wrong fstype: ${ID_FS_TYPE} - ${dev_json}"
+         exit 2
+     fi
+@@ -81,6 +90,18 @@
+         exit 1
+     fi
+ 
++    # Check if there's a subvolume @ and use that as root of the drive
++    if [[ ${ID_FS_TYPE} == "btrfs" ]] && btrfs subvolume show "${MOUNT_POINT}/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}" &>/dev/null; then
++        /bin/umount -l -- "${MOUNT_POINT}"
++        OPTS+=",subvol=${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}"
++        if ! /bin/mount -o "${OPTS}" -- "${DEVICE}" "${MOUNT_POINT}"; then
++            echo "Error mounting ${DEVICE} (status = $?)"
++            /bin/rmdir -- "${MOUNT_POINT}"
++            exit 1
++        fi
++    fi
++    #### SteamOS Btrfs End ####
++
+     chown 1000:1000 -- "${MOUNT_POINT}"
+ 
+     echo "**** Mounted ${DEVICE} at ${MOUNT_POINT} ****"
