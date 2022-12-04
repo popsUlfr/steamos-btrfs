@@ -1,9 +1,9 @@
 # SteamOS 3/Steam Deck Btrfs converter <img align="right" height="32" src="data/steamos-btrfs-logo.svg">
 
 This injector will install the necessary payload to keep a btrfs formatted /home even through system updates. You may also choose to only install the support for formatting and mounting of multiple filesystems for the SD cards.
-It will allow to mount btrfs, f2fs and ext4 formatted SD cards and will also force new SD cards to be formatted as btrfs by default or a user configured filesystem.
+It will allow to mount btrfs, f2fs, ext4, fat, exfat and ntfs formatted SD cards and will also force new SD cards to be formatted as btrfs by default or a user configured filesystem.
 
-Btrfs with its transparent compression and deduplication capabilities can achieve impressive storage gains but also improve loading times because of less data being read.
+Btrfs with its transparent compression and deduplication capabilities can achieve impressive storage gains but also improve loading times because of less data being read. It also supports instant snapshotting which is very useful to roll back to a previous state.
 
 **WARNING!!!! If you decide to so, it will install a service that will attempt on the next boot to convert the ext4 /home partition into btrfs and depending on the already used storage this operation may fail or take a long time!**
 
@@ -15,13 +15,14 @@ Btrfs with its transparent compression and deduplication capabilities can achiev
 ## Features
 
 - Btrfs /home conversion from ext4 (optional)
-- Btrfs, f2fs, ext4 formatted SD card support
-- Btrfs, f2fs, ext4 formating of SD card
+- Btrfs, f2fs, ext4, fat, exfat, ntfs formatted SD card support
+- Btrfs, f2fs, ext4, fat, exfat, ntfs formating of SD card
 - Progress dialog and logging during the home conversion!
 - Install additional pacman packages into the rootfs automatically and persist through updates
 - **Survives updates and branch changes!**
 - Steam's `downloading` and `temp` folders as subvolumes with COW disabled
 - Update check
+- Non-linux filesystems (fat, exfat, ntfs) have their `compatdata` folder bind mounted from the internal storage for proton support (and don't forget that with fat you are restricted to a maximum of 4GB per file!)
 
 ![Btrfs /home conversion progress dialog](data/steamos-btrfs-conversion.webp "Btrfs /home conversion progress dialog")
 
@@ -40,6 +41,8 @@ The original files that have been changed are backed up with the `.orig` extensi
 It is safe to revert to the original files if the btrfs conversion was not attempted.
 
 **Please make sure you have enough free space before attempting the conversion. At least 10-20GiB and/or 10-20% free space should usually be fine.**
+
+**When mounting an SD card that is fat, exfat, ntfs formatted:** the eject function in the Steam Client will not work because the `compatdata` folder is bind mounted from the internal storage. To manually unmount: `sudo systemctl stop sdcard-mount@mmcblk0p1.service`.
 
 **Double-click the downloaded file**
 
@@ -149,6 +152,12 @@ or
 sudo rm /etc/systemd/system/steamos-convert-home-to-btrfs.service
 ```
 
+**Disclaimer about mounting fat, exfat, ntfs filesystems: the eject functionality in the Steam client will not work because the `compatdata` folder is bind mounted from the internal storage. To unmount the SD card manually execute:**
+
+```sh
+sudo systemctl stop sdcard-mount@mmcblk0p1.service
+```
+
 ## Updating or changing config options
 
 At any time you can rerun the installer and let it download the latest version and go through the installation again to enable the latest changes or simply apply changed settings (`/usr/share/steamos-btrfs/install.sh`).
@@ -211,6 +220,28 @@ The following mount options are used by default:
 
 - `noatime,lazytime`: to keep writes to a minimum
 
+### fat mount options
+
+**Don't forget that fat formatted SD cards are limited to 4GB per file!**
+
+- `noatime,lazytime`: to keep writes to a minimum
+- `uid=1000,gid=1000`: make it usable for the default `deck` user
+- `utf8=1`: force utf8 support
+
+### exfat mount options
+
+- `noatime,lazytime`: to keep writes to a minimum
+- `uid=1000,gid=1000`: make it usable for the default `deck` user
+
+### ntfs mount options
+
+- `noatime,lazytime`: to keep writes to a minimum
+- `uid=1000,gid=1000`: make it usable for the default `deck` user
+- `big_writes`: prevent splitting of write buffers into 4K chunks
+- `umask=0022`: default bitmask of file and directories
+- `ignore_case`: ignore character case when accessing a file (lowntfs-3g)
+- `windows_names`: prevents names not allowed by windows
+
 ## Configuration options
 
 A configuration file is available to change various filesystem options at [`/etc/default/steamos-btrfs`](files/etc/default/steamos-btrfs).
@@ -226,6 +257,12 @@ A configuration file is available to change various filesystem options at [`/etc
 - `STEAMOS_BTRFS_SDCARD_EXT4_FORMAT_OPTS`   : flags to pass to `mkfs.ext4` during the format.
 - `STEAMOS_BTRFS_SDCARD_F2FS_MOUNT_OPTS`    : the f2fs mount options for f2fs formatted SD cards.
 - `STEAMOS_BTRFS_SDCARD_F2FS_FORMAT_OPTS`   : flags to pass to `mkfs.f2fs` during the format.
+- `STEAMOS_BTRFS_SDCARD_FAT_MOUNT_OPTS`     : the fat mount options for fat formatted SD cards.
+- `STEAMOS_BTRFS_SDCARD_FAT_FORMAT_OPTS`    : flags to pass to `mkfs.vfat` during the format.
+- `STEAMOS_BTRFS_SDCARD_EXFAT_MOUNT_OPTS`   : the exfat mount options for exfat formatted SD cards.
+- `STEAMOS_BTRFS_SDCARD_EXFAT_FORMAT_OPTS`  : flags to pass to `mkfs.exfat` during the format. (the `mkfs.exfat` from `exfatprogs`)
+- `STEAMOS_BTRFS_SDCARD_NTFS_MOUNT_OPTS`    : the ntfs mount options for ntfs formatted SD cards.
+- `STEAMOS_BTRFS_SDCARD_NTFS_FORMAT_OPTS`   : flags to pass to `mkfs.ntfs` during the format.
 - `STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS`  : additional pacman packages to install into the rootfs separated by spaces (e.g.: "compsize nfs-utils wireguard-tools ..."). You can install them easily immediately by running the installation script again [`/usr/share/steamos-btrfs/install.sh`](install.sh).
 
 If you changed the default options and want to reset them or want to benefit from updated default options you can do the following:
