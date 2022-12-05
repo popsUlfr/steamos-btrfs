@@ -1,5 +1,5 @@
---- main/usr/lib/hwsupport/sdcard-mount.sh	2022-11-22 01:20:12.000000000 +0100
-+++ work/usr/lib/hwsupport/sdcard-mount.sh	2022-12-05 11:08:19.127520944 +0100
+--- main/usr/lib/hwsupport/sdcard-mount.sh	2022-11-02 00:49:16.000000000 +0100
++++ work/usr/lib/hwsupport/sdcard-mount.sh	2022-12-04 23:55:24.265397764 +0100
 @@ -61,26 +61,65 @@
  
      /bin/mkdir -p -- "${MOUNT_POINT}"
@@ -18,17 +18,17 @@
 +    if [[ -f /etc/default/steamos-btrfs ]]; then
 +        source /etc/default/steamos-btrfs
 +    fi
-+    if [[ "${ID_FS_TYPE}" == "ext4" ]]; then
++    if [[ ${ID_FS_TYPE} == "ext4" ]]; then
 +        OPTS="${STEAMOS_BTRFS_SDCARD_EXT4_MOUNT_OPTS:-rw,noatime,lazytime}"
-+    elif [[ "${ID_FS_TYPE}" == "f2fs" ]]; then
++    elif [[ ${ID_FS_TYPE} == "f2fs" ]]; then
 +        OPTS="${STEAMOS_BTRFS_SDCARD_F2FS_MOUNT_OPTS:-rw,noatime,lazytime,compress_algorithm=zstd,compress_chksum,atgc,gc_merge}"
-+    elif [[ "${ID_FS_TYPE}" == "btrfs" ]]; then
++    elif [[ ${ID_FS_TYPE} == "btrfs" ]]; then
 +        OPTS="${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_OPTS:-rw,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,ssd_spread}"
-+    elif [[ "${ID_FS_TYPE}" == "vfat" ]]; then
++    elif [[ ${ID_FS_TYPE} == "vfat" ]]; then
 +        OPTS="${STEAMOS_BTRFS_SDCARD_FAT_MOUNT_OPTS:-rw,noatime,lazytime,uid=1000,gid=1000,utf8=1}"
-+    elif [[ "${ID_FS_TYPE}" == "exfat" ]]; then
++    elif [[ ${ID_FS_TYPE} == "exfat" ]]; then
 +        OPTS="${STEAMOS_BTRFS_SDCARD_EXFAT_MOUNT_OPTS:-rw,noatime,lazytime,uid=1000,gid=1000}"
-+    elif [[ "${ID_FS_TYPE}" == "ntfs" ]]; then
++    elif [[ ${ID_FS_TYPE} == "ntfs" ]]; then
 +        OPTS="${STEAMOS_BTRFS_SDCARD_NTFS_MOUNT_OPTS:-rw,noatime,lazytime,uid=1000,gid=1000,big_writes,umask=0022,ignore_case,windows_names}"
 +        EXTRA_OPTS="-t lowntfs-3g"
 +    else
@@ -43,7 +43,7 @@
          exit 1
      fi
  
-+    if [[ "${ID_FS_TYPE}" == "btrfs" ]]; then
++    if [[ ${ID_FS_TYPE} == "btrfs" ]]; then
 +        # Check if there's a subvolume @ and use that as root of the drive
 +        if [[ -d "${MOUNT_POINT}/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}" ]] && btrfs subvolume show "${MOUNT_POINT}/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}" &>/dev/null; then
 +            /bin/umount -l -- "${MOUNT_POINT}"
@@ -64,7 +64,7 @@
 +                chown 1000:1000 "${d%/*}" "$d"
 +            fi
 +        done
-+    elif [[ "${STEAMOS_BTRFS_SDCARD_COMPATDATA_BIND_MOUNT:-1}" == "1" ]] && [[ "${ID_FS_TYPE}" == "vfat" || "${ID_FS_TYPE}" == "exfat" || "${ID_FS_TYPE}" == "ntfs" ]]; then
++    elif [[ ${ID_FS_TYPE} == "vfat" || ${ID_FS_TYPE} == "exfat" || ${ID_FS_TYPE} == "ntfs" ]]; then
 +        # bind mount compatdata folder from internal disk
 +        mkdir -p "${MOUNT_POINT}"/steamapps/compatdata
 +        chown 1000:1000 "${MOUNT_POINT}"/steamapps{,/compatdata}
