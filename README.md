@@ -22,7 +22,7 @@ Btrfs with its transparent compression and deduplication capabilities can achiev
 - **Survives updates and branch changes!**
 - Steam's `downloading` and `temp` folders as subvolumes with COW disabled
 - Update check
-- Non-linux filesystems (fat, exfat, ntfs) have their `compatdata` folder bind mounted from the internal storage for proton support (and don't forget that with fat you are restricted to a maximum of 4GB per file!)
+- Non-linux filesystems (fat, exfat, ntfs) have their `compatdata` folder bind mounted from the internal storage for proton support by default (and don't forget that with fat you are restricted to a maximum of 4GB per file!)
 
 ![Btrfs /home conversion progress dialog](data/steamos-btrfs-conversion.webp "Btrfs /home conversion progress dialog")
 
@@ -42,7 +42,7 @@ It is safe to revert to the original files if the btrfs conversion was not attem
 
 **Please make sure you have enough free space before attempting the conversion. At least 10-20GiB and/or 10-20% free space should usually be fine.**
 
-**When mounting an SD card that is fat, exfat, ntfs formatted:** the eject function in the Steam Client will not work because the `compatdata` folder is bind mounted from the internal storage. To manually unmount: `sudo systemctl stop sdcard-mount@mmcblk0p1.service`.
+**When mounting an SD card that is fat, exfat, ntfs formatted:** the eject function in the Steam Client will not work because the `compatdata` folder is bind mounted from the internal storage. To manually unmount: `sudo systemctl stop sdcard-mount@mmcblk0p1.service` or disable via [Configuration options](#configuration-options).
 
 **Double-click the downloaded file**
 
@@ -158,6 +158,9 @@ sudo rm /etc/systemd/system/steamos-convert-home-to-btrfs.service
 sudo systemctl stop sdcard-mount@mmcblk0p1.service
 ```
 
+Alternatively you can disable bind mounting the `compatdata/` folder by setting `STEAMOS_BTRFS_SDCARD_COMPATDATA_BIND_MOUNT` to `0` in the [Configuration options](#configuration-options).
+This will prevent proton games from working.
+
 ## Updating or changing config options
 
 At any time you can rerun the installer and let it download the latest version and go through the installation again to enable the latest changes or simply apply changed settings (`/usr/share/steamos-btrfs/install.sh`).
@@ -263,6 +266,7 @@ A configuration file is available to change various filesystem options at [`/etc
 - `STEAMOS_BTRFS_SDCARD_EXFAT_FORMAT_OPTS`  : flags to pass to `mkfs.exfat` during the format. (the `mkfs.exfat` from `exfatprogs`)
 - `STEAMOS_BTRFS_SDCARD_NTFS_MOUNT_OPTS`    : the ntfs mount options for ntfs formatted SD cards.
 - `STEAMOS_BTRFS_SDCARD_NTFS_FORMAT_OPTS`   : flags to pass to `mkfs.ntfs` during the format.
+- `STEAMOS_BTRFS_SDCARD_COMPATDATA_BIND_MOUNT`: toggle bind mounting the `compatdata/` folder for proton support on fat, exfat, ntfs filesystems. Setting to 0 makes it possible to eject the SD card from the Steam client.
 - `STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS`  : additional pacman packages to install into the rootfs separated by spaces (e.g.: "compsize nfs-utils wireguard-tools ..."). You can install them easily immediately by running the installation script again [`/usr/share/steamos-btrfs/install.sh`](install.sh).
 
 If you changed the default options and want to reset them or want to benefit from updated default options you can do the following:
