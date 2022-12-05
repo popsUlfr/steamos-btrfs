@@ -593,6 +593,10 @@ epatch() {
 }
 
 factory_pacman() {
+  if [[ ! -f etc/pacman.conf.orig ]]; then
+    cmd cp -a etc/pacman.conf{,.orig}
+  fi
+  cmd sed -i 's/^SigLevel\s*=.*$/SigLevel = Never/g' etc/pacman.conf
   if cmd pacman --root . \
     --config etc/pacman.conf \
     --dbpath usr/share/factory/var/lib/pacman \
@@ -601,8 +605,10 @@ factory_pacman() {
     --logfile /dev/null \
     --disable-download-timeout \
     "$@" < <(yes 'y'); then
+    cmd mv -vf etc/pacman.conf{.orig,}
     return 0
   else
+    cmd mv -vf etc/pacman.conf{.orig,}
     return 1
   fi
 }
