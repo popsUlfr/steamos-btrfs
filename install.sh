@@ -826,7 +826,7 @@ rootfs_install_packages_cleanup() {
     if mountpoint -q "${VAR_MOUNTPOINT}"; then
       cmd umount -l "${VAR_MOUNTPOINT}" || true
     fi
-    cmd rm -rf "${VAR_MOUNTPOINT}" || true
+    cmd rmdir "${VAR_MOUNTPOINT}" || true
   fi
   if [[ -d "${PACMAN_CACHE}" ]]; then
     cmd rm -rf "${PACMAN_CACHE}" || true
@@ -864,7 +864,7 @@ rootfs_install_packages() {
     cmd rsync -a --inplace --delete usr/share/factory/var/lib/pacman/ "${VAR_MOUNTPOINT}"/lib/pacman/
   fi
   cmd umount -l "${VAR_MOUNTPOINT}"
-  cmd rm -rf "${VAR_MOUNTPOINT}"
+  cmd rmdir "${VAR_MOUNTPOINT}" || true
   ONEXITERR=("${ONEXITERR[@]:1}")
 }
 
@@ -876,7 +876,7 @@ rootfs_fstab_patch_cleanup() {
     if mountpoint -q "${VAR_MOUNTPOINT}"; then
       cmd umount -l "${VAR_MOUNTPOINT}" || true
     fi
-    cmd rm -rf "${VAR_MOUNTPOINT}" || true
+    cmd rmdir "${VAR_MOUNTPOINT}" || true
   fi
   if [[ "$(blkid -o value -s TYPE "${HOME_DEVICE}")" != 'btrfs' ]]; then
     cmd mv -vf etc/fstab{.orig,} || true
@@ -918,7 +918,7 @@ rootfs_fstab_patch() {
     cmd sed -i 's#^\S\+\s\+'"${HOME_MOUNTPOINT}"'\s\+\S\+\s\+.*$#tmpfs '"${HOME_MOUNTPOINT}"' tmpfs defaults,nofail,noatime,lazytime 0 0#' "${fstab_files[@]}"
   fi
   cmd umount -l "${VAR_MOUNTPOINT}"
-  cmd rm -rf "${VAR_MOUNTPOINT}"
+  cmd rmdir "${VAR_MOUNTPOINT}" || true
   ONEXITERR=("${ONEXITERR[@]:1}")
   ONEXITRESTORE=(rootfs_fstab_patch_restore "${ONEXITRESTORE[@]}")
 }
@@ -1044,7 +1044,7 @@ fstrim_timer_enable_cleanup() {
     if mountpoint -q "${VAR_MOUNTPOINT}"; then
       cmd umount -l "${VAR_MOUNTPOINT}" || true
     fi
-    cmd rm -rf "${VAR_MOUNTPOINT}" || true
+    cmd rmdir "${VAR_MOUNTPOINT}" || true
   fi
 }
 
@@ -1061,7 +1061,7 @@ fstrim_timer_enable() {
   cmd mount -o remount /etc || true
   cmd systemctl start fstrim.timer || true
   cmd umount -l "${VAR_MOUNTPOINT}"
-  cmd rm -rf "${VAR_MOUNTPOINT}"
+  cmd rmdir "${VAR_MOUNTPOINT}" || true
   ONEXITERR=("${ONEXITERR[@]:1}")
 }
 
@@ -1082,7 +1082,7 @@ rootfs_inject_cleanup() {
       cmd btrfs property set "${ROOTFS_MOUNTPOINT}" ro true || true
       cmd umount -l "${ROOTFS_MOUNTPOINT}" || true
     fi
-    cmd rm -rf "${ROOTFS_MOUNTPOINT}" || true
+    cmd rmdir "${ROOTFS_MOUNTPOINT}" || true
   fi
 }
 
@@ -1112,7 +1112,7 @@ rootfs_inject() {
   export PATH="${oPATH}"
   export LD_LIBRARY_PATH="${oLD_LIBRARY_PATH}"
   cmd umount -l "${ROOTFS_MOUNTPOINT}"
-  cmd rm -rf "${ROOTFS_MOUNTPOINT}"
+  cmd rmdir "${ROOTFS_MOUNTPOINT}" || true
   ONEXITERR=("${ONEXITERR[@]:1}")
   ONEXITRESTORE=()
 }
