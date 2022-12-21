@@ -787,6 +787,11 @@ err() {
 }
 
 quit() {
+  local last_status_code="$?"
+  if [[ "${last_status_code}" -ne 0 ]]; then
+    err
+    return
+  fi
   echo >&2
   eprint 'Quit signal received.'
   eprint 'Cleaning up...'
