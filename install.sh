@@ -709,7 +709,7 @@ log_truncate() {
     return
   fi
   eprint "Truncating log file: ${LOGFILE}"
-  tail -n +"${log_bms[0]}" "${LOGFILE}" > "${LOGFILE}.new"
+  tail -n +"${log_bms[0]}" "${LOGFILE}" >"${LOGFILE}.new"
   mv -f "${LOGFILE}.new" "${LOGFILE}"
 }
 
@@ -850,17 +850,44 @@ rootfs_install_packages_cleanup() {
   fi
 }
 
+pacman_repos_check_and_fix() {
+  local repos=()
+  readarray -t repos < <(sed -n 's/^\[\([^]]\+\)\]/\1/p' etc/pacman.conf | grep -v '^options$')
+  for r in "${repos[@]}"; do
+    local ret_code='200'
+    ret_code="$(curl -sSLIo /dev/null -w '%{http_code}' "https://steamdeck-packages.steamos.cloud/archlinux-mirror/${r}/os/x86_64/${r}.db")"
+    if [[ "${ret_code}" != '200' ]]; then
+      local nr
+      nr="${r%-main}"
+      nr="${nr%-beta}"
+      nr="${nr%-rel}"
+      nr="${nr%-3.3}"
+      nr="${nr%-3.3.3}"
+      local trepos=()
+      if [[ "${r}" == *-beta ]]; then
+        trepos=("${nr}-rel" "${nr}-main")
+      else
+        trepos=("${nr}" "${nr}-3.3.3" "${nr}-3.3")
+      fi
+      for r2 in "${trepos[@]}"; do
+        if [[ "${r}" == "${r2}" ]]; then
+          continue
+        fi
+        ret_code="$(curl -sSLIo /dev/null -w '%{http_code}' "https://steamdeck-packages.steamos.cloud/archlinux-mirror/${r2}/os/x86_64/${r2}.db")"
+        if [[ "${ret_code}" == '200' ]]; then
+          eprint "Replace non-existing '${r}' repo with '${r2}' in /etc/pacman.conf"
+          cmd sed -i 's/^\['"${r}"'\]/['"${r2}"']/' etc/pacman.conf
+          break
+        fi
+      done
+    fi
+  done
+}
+
 rootfs_install_packages() {
   ONEXITERR=(rootfs_install_packages_cleanup "${ONEXITERR[@]}")
   eprint "Install the needed arch packages: ${PKGS[*]}"
-  # Patch /etc/pacman.conf if jupiter-beta does not exist
-  if grep -q '^\[jupiter-beta\]' etc/pacman.conf; then
-    ret_code="$(curl -sSLIo /dev/null -w '%{http_code}' 'https://steamdeck-packages.steamos.cloud/archlinux-mirror/jupiter-beta/os/x86_64/jupiter-beta.db')"
-    if [[ "${ret_code}" != '200' ]]; then
-      eprint "Replace non-existing jupiter-beta repo in /etc/pacman.conf"
-      cmd sed -i 's/^\[jupiter-beta\]/[jupiter]/' etc/pacman.conf
-    fi
-  fi
+  pacman_repos_check_and_fix
   PACMAN_CACHE="$(mktemp -d)"
   factory_pacman --cachedir "${PACMAN_CACHE}" -Sy --needed "${PKGS[@]}"
   # patch the /usr/lib/manifest.pacman with the new packages
