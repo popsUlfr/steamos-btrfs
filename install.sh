@@ -702,8 +702,20 @@ determine_home_device() {
   fi
 }
 
+log_truncate() {
+  local log_bms=()
+  readarray -t log_bms < <(grep -n '^#\+\s*[-0-9]\+\s\+[0-9:.]\+\s*#\+' "${LOGFILE}" | tail -n 6 | cut -d: -f1)
+  if [[ "${#log_bms[@]}" -lt 6 ]]; then
+    return
+  fi
+  eprint "Truncating log file: ${LOGFILE}"
+  tail -n +"${log_bms[0]}" "${LOGFILE}" > "${LOGFILE}.new"
+  mv -f "${LOGFILE}.new" "${LOGFILE}"
+}
+
 log_handler() {
   if mkdir -p "$(dirname "${LOGFILE}")" && touch "${LOGFILE}"; then
+    log_truncate
     exec &> >(tee -a "${LOGFILE}")
     printf '#### %(%F %T)T ####\n'
     if [[ -f "${WORKDIR}/version" ]]; then
