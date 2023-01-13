@@ -889,7 +889,7 @@ rootfs_install_packages() {
   eprint "Install the needed arch packages: ${PKGS[*]}"
   pacman_repos_check_and_fix
   PACMAN_CACHE="$(mktemp -d)"
-  factory_pacman --cachedir "${PACMAN_CACHE}" -Sy --needed "${PKGS[@]}"
+  factory_pacman --cachedir "${PACMAN_CACHE}" -Sy --needed --overwrite='*' "${PKGS[@]}"
   # patch the /usr/lib/manifest.pacman with the new packages
   if [[ -f usr/lib/manifest.pacman ]]; then
     eprint 'Patch the /usr/lib/manifest.pacman with the new packages'
