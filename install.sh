@@ -633,7 +633,7 @@ list_rootfs_devices() {
     fi
   done
   local rootfs_devs_x=()
-  readarray -t rootfs_devs_x < <(blkid | grep '\bLABEL="rootfs\(-[a-zA-Z]\+\)\?"' | cut -d: -f1 | sort)
+  readarray -t rootfs_devs_x < <(blkid | grep '\b\(PART\)\?LABEL="rootfs\(-[a-zA-Z]\+\)\?"' | cut -d: -f1 | sort)
   for rfs_dev_x in "${rootfs_devs_x[@]}"; do
     if [[ "$(blkid -o value -s TYPE "${rfs_dev_x}")" != 'btrfs' ]]; then
       continue
@@ -663,8 +663,8 @@ determine_var_device() {
   rootfs_dev="$(realpath "$1")"
   local rootfs_devs=()
   local var_devs=()
-  readarray -t rootfs_devs < <(blkid | grep '\bLABEL="rootfs\(-[a-zA-Z]\+\)\?"' | cut -d: -f1 | grep '^'"${rootfs_dev%[[:digit:]]*}" | sort -u)
-  readarray -t var_devs < <(blkid | grep '\bLABEL="var\(-[a-zA-Z]\+\)\?"' | cut -d: -f1 | grep '^'"${rootfs_dev%[[:digit:]]*}" | sort -u)
+  readarray -t rootfs_devs < <(blkid | grep '\b\(PART\)\?LABEL="rootfs\(-[a-zA-Z]\+\)\?"' | cut -d: -f1 | grep '^'"${rootfs_dev%[[:digit:]]*}" | sort -u)
+  readarray -t var_devs < <(blkid | grep '\b\(PART\)\?LABEL="var\(-[a-zA-Z]\+\)\?"' | cut -d: -f1 | grep '^'"${rootfs_dev%[[:digit:]]*}" | sort -u)
   local pos=0
   for rfs_d in "${rootfs_devs[@]}"; do
     if [[ "${rfs_d}" == "${rootfs_dev}" ]]; then
@@ -690,8 +690,8 @@ determine_home_device() {
   rootfs_dev="$(realpath "$1")"
   local rootfs_devs=()
   local home_devs=()
-  readarray -t rootfs_devs < <(blkid | grep '\bLABEL="rootfs\(-[a-zA-Z]\+\)\?"' | cut -d: -f1 | grep '^'"${rootfs_dev%[[:digit:]]*}" | sort -u)
-  readarray -t home_devs < <(blkid -t LABEL=home -o device | grep '^'"${rootfs_dev%[[:digit:]]*}" | sort -u)
+  readarray -t rootfs_devs < <(blkid | grep '\b\(PART\)\?LABEL="rootfs\(-[a-zA-Z]\+\)\?"' | cut -d: -f1 | grep '^'"${rootfs_dev%[[:digit:]]*}" | sort -u)
+  readarray -t home_devs < <(blkid | grep '\b\(PART\)\?LABEL="home\(-[a-zA-Z]\+\)\?"' | cut -d: -f1 | grep '^'"${rootfs_dev%[[:digit:]]*}" | sort -u)
   local home_dev="${home_devs[0]}"
   local vhome_dev=''
   vhome_dev="$(find /dev/disk/by-partsets/{self,other,shared,*} -mindepth 1 -maxdepth 1 -name home -exec sh -c '[ "$(realpath "$1")" = "$2" ]' _ '{}' "${home_dev}" \; -print -quit)"
