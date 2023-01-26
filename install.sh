@@ -25,7 +25,7 @@ STEAMOS_BTRFS_HOME_MOUNT_SUBVOL_DEFAULT='@'
 STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS_DEFAULT=''
 CONFIGFILE='/etc/default/steamos-btrfs'
 LOGFILE='/var/log/steamos-btrfs.log'
-PKGS=(f2fs-tools reiserfsprogs kdialog wmctrl patch exfatprogs)
+PKGS=(f2fs-tools reiserfsprogs kdialog wmctrl patch exfatprogs compsize rmlint duperemove)
 PKGS_SIZE="${#PKGS[@]}"
 ROOTFS_DEVICES=('/dev/disk/by-partsets/self/rootfs')
 ROOTFS_DEVICE='/dev/disk/by-partsets/self/rootfs'
@@ -752,7 +752,7 @@ rootfs_device_selection() {
   for rd in "${ALL_ROOTFS_DEVICES[@]}"; do
     for rdo in "${ROOTFS_DEVICES[@]}"; do
       if [[ "${rd}" == "${rdo}" ]]; then
-        ALL_ROOTFS_DEVICES[${i}]="+${rd}"
+        ALL_ROOTFS_DEVICES[i]="+${rd}"
         break
       fi
     done
@@ -1074,7 +1074,7 @@ home_steam_download_workaround() {
         readarray -d'/' -t -O1 d_parts <<<"${d#"${d_parts[0]}"/}"
         i=1
         for p in "${d_parts[@]:1}"; do
-          d_parts[${i}]="${d_parts[$((i - 1))]}/${p%[[:space:]]*}"
+          d_parts[i]="${d_parts[$((i - 1))]}/${p%[[:space:]]*}"
           i=$((i + 1))
         done
         cmd chown 1000:1000 "${d_parts[@]}"
@@ -1083,7 +1083,7 @@ home_steam_download_workaround() {
   fi
 }
 
-fstrim_timer_enable_cleanup() {
+specialty_timers_enable_cleanup() {
   if [[ -d "${VAR_MOUNTPOINT}" ]]; then
     if mountpoint -q "${VAR_MOUNTPOINT}"; then
       cmd umount -l "${VAR_MOUNTPOINT}" || true
@@ -1092,18 +1092,40 @@ fstrim_timer_enable_cleanup() {
   fi
 }
 
-fstrim_timer_enable() {
-  ONEXITERR=(fstrim_timer_enable_cleanup "${ONEXITERR[@]}")
+specialty_timers_enable() {
+  ONEXITERR=(specialty_timers_enable_cleanup "${ONEXITERR[@]}")
   # synchronize the /var partition with the new pacman state if needed
   eprint 'Enable fstrim.timer for periodic TRIM'
+  eprint 'Enable btrfs-dedup@home.timer and btrfs-dedup@run-media-mmcblk0p1.timer for periodic deduplication'
   VAR_MOUNTPOINT="$(mktemp -d)"
   cmd mount "${VAR_DEVICE}" "${VAR_MOUNTPOINT}"
   cmd mkdir -p "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/systemd/system/timers.target.wants"
   cmd ln -s /usr/lib/systemd/system/fstrim.timer "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/systemd/system/timers.target.wants/fstrim.timer" || true
+  cmd ln -s /usr/lib/systemd/system/btrfs-dedup@.timer "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/systemd/system/timers.target.wants/btrfs-dedup@home.timer" || true
+  cmd ln -s /usr/lib/systemd/system/btrfs-dedup@.timer "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/systemd/system/timers.target.wants/btrfs-dedup@run-media-mmcblk0p1.timer" || true
+  # write a service override to set cpu affinity
+  if [[ ! -f "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/systemd/system/btrfs-dedup@.service.d/override.conf" ]]; then
+    local cpu_affinity=()
+    # pin to the last core
+    readarray -t cpu_affinity < <(lscpu --parse=CORE,CPU | sort -n -t, -k1,1 | tail -n 2 | cut -d, -f2)
+    if [[ "${#cpu_affinity[@]}" -gt 0 ]]; then
+      mkdir -p "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/systemd/system/btrfs-dedup@.service.d"
+      (
+        IFS=','
+        cat <<EOF >"${VAR_MOUNTPOINT}/lib/overlays/etc/upper/systemd/system/btrfs-dedup@.service.d/override.conf"
+[Service]
+CPUAffinity=${cpu_affinity[*]}
+EOF
+      )
+    fi
+  fi
   # try to remount /etc overlay to refresh the lowerdir otherwise the files look corrupted
   eprint "Remount /etc overlay to refresh the changed files"
   cmd mount -o remount /etc || true
+  cmd systemctl daemon-reload || true
   cmd systemctl start fstrim.timer || true
+  cmd systemctl start btrfs-dedup@home.timer || true
+  cmd systemctl start btrfs-dedup@run-media-mmcblk0p1.timer || true
   cmd umount -l "${VAR_MOUNTPOINT}"
   cmd rmdir "${VAR_MOUNTPOINT}" || true
   ONEXITERR=("${ONEXITERR[@]:1}")
@@ -1150,7 +1172,7 @@ rootfs_inject() {
   rootfs_remove_old_files
   rootfs_copy_files
   home_steam_download_workaround
-  fstrim_timer_enable
+  specialty_timers_enable
   home_copy_desktop_file
   cmd btrfs property set "${ROOTFS_MOUNTPOINT}" ro true
   export PATH="${oPATH}"

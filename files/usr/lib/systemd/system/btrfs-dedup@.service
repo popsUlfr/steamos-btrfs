@@ -1,0 +1,24 @@
+[Unit]
+Description=Btrfs deduplication on %f
+ConditionPathIsMountPoint=%f
+RequiresMountsFor=%f
+
+[Service]
+Type=oneshot
+ExecCondition=sh -c '[ "$(stat -f -c "%%T" "$1")" = btrfs ]' _ %f
+ExecStartPre=-find %f -mindepth 1 -maxdepth 1 -mtime +14 -name .duperemove.hash -exec rm -f '{}' \;
+ExecStartPre=-cp -a %f/.duperemove.hash duperemove.hash
+ExecStartPre=-compsize %f
+ExecStart=rmlint --types="duplicates" --config=sh:handler=clone %f
+ExecStart=sh -c 'exec ./rmlint.sh -d -p -r -k'
+ExecStart=-compsize %f
+ExecStart=duperemove -r -d -h -q --hashfile=duperemove.hash --io-threads=2 --cpu-threads=2 --skip-zeroes --exclude="%f/.duperemove.hash" --exclude="%f/@swapfile/swapfile" %f
+ExecStartPost=-compsize %f
+ExecStopPost=-cp -a duperemove.hash %f/.duperemove.hash
+TimeoutStartSec=4h
+RuntimeDirectory=%p/%i
+WorkingDirectory=%t/%p/%i
+Nice=19
+CPUSchedulingPolicy=batch
+IOSchedulingClass=idle
+OOMScoreAdjust=1000
