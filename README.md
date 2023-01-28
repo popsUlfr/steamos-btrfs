@@ -283,31 +283,27 @@ sudo mount -o remount /etc
 
 ## Deduplication
 
+### Using the `btrfs-dedup@` timers
+
+The script installs a `btrfs-dedup@.timer` and `btrfs-dedup@.service` that runs a background deduplication using `rmlint` and `duperemove` once a week.
+
+You can stop and resume the deduplication at any time, `duperemove` in some cases can take forever so the process is limited to 4 hours max.
+
+For `/home`:
+```sh
+sudo systemctl start --no-block btrfs-dedup@home.service
+sudo systemctl stop --no-block btrfs-dedup@home.service
+```
+
+For `/run/media/mmcblk0p1` (SD card):
+```sh
+sudo systemctl start --no-block btrfs-dedup@run-media-mmcblk0p1.service
+sudo systemctl stop --no-block btrfs-dedup@run-media-mmcblk0p1.service
+```
+
+### Manual dedup
+
 Using first [rmlint](https://rmlint.readthedocs.io/en/latest/) for fast efficient file deduplication and finally [duperemove](https://github.com/markfasheh/duperemove) for block based deduplication is the most effective way to potentially reduce disk space.
-
-You can install the tools with the installer by editing the config file `/etc/default/steamos-btrfs` (sticks through upgrades and channel changes) or using the environment variable `STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS` or the command line argument `--STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS 'pkgs...'`:
-
-`/etc/default/steamos-btrfs`:
-```sh
-STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS="compsize duperemove rmlint"
-```
-```sh
-STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS="compsize duperemove rmlint" /usr/share/steamos-btrfs/install.sh
-/usr/share/steamos-btrfs/install.sh --STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS "compsize duperemove rmlint"
-```
-
-Alternatively, install the tools locally
-```sh
-sudo pacman --cachedir /tmp -Sw compsize duperemove rmlint
-mkdir -p ~/.local/bin
-for f in /tmp/*.pkg.tar.zst ; do tar -xf "$f" -C ~/.local/bin --strip-components=2 usr/bin ; done
-sudo rm /tmp/*.pkg.*
-```
-
-Set the `PATH` variable and optionally add it to the `~/.bash_profile`.
-```sh
-export PATH="$PATH:$HOME/.local/bin"
-```
 
 Check with `compsize` the used disk space before deduplication:
 ```sh
@@ -326,7 +322,11 @@ sudo rm -r rmlint*
 
 Then use `duperemove` which might take a while:
 ```sh
-sudo duperemove -r -d -h --hashfile=/home/duperemove.hash --skip-zeroes --lookup-extents=no /home
+cd /tmp
+[ -f /home/.duperemove.hash ] && sudo cp -a /home/.duperemove.hash duperemove.hash
+sudo duperemove -r -d -h --hashfile=duperemove.hash --skip-zeroes /home
+sudo cp -a duperemove.hash /home/.duperemove.hash
+sudo rm duperemove.hash
 ```
 
 Check the used disk space again:
@@ -334,11 +334,14 @@ Check the used disk space again:
 sudo compsize /home
 ```
 
+You can do the same for the SD card just replace `/home` with `/run/media/mmcblk0p1`.
+
 ## Steam preallocation woes
 
-The latest version attempts to replace Steam's `downloading` and `temp` folders (located in `Steam/steamapps/`) with btrfs subvolumes and COW disabled. This is to mitigate the issue of games downloaded through the Steam client not having the most optimal compression ratio.
+SteamOS' `5.13*` kernel has an issue where games downloaded through the Steam client will not achieve their most optimal compression ratio.
+To mitigate this, the current version attempts to replace Steam's `downloading` and `temp` folders (located in `Steam/steamapps/`) with btrfs subvolumes and COW disabled.
 
-If you were already using this project or you think your games' space usage is less than ideal you may want to consider to defragment and balance your Steam library manually:
+If you were already using this project or you think your games' space usage is less than ideal you may want to consider defragmenting and balancing your Steam library manually:
 
 For the internal storage:
 ```sh
@@ -354,4 +357,4 @@ sudo btrfs balance start -m -v /run/media/mmcblk0p1/steamapps
 
 ## TODO
 
-- [ ] deduplication service
+- [ ] SD card/any drive btrfs conversion
