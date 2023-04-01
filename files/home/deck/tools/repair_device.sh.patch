@@ -39,7 +39,7 @@
 +      fmt_btrfs home "$(diskpart $FS_HOME)"
 +      MOUNT_DIR="/mnt"
 +      mkdir -p "$MOUNT_DIR"
-+      mount -o "${STEAMOS_BTRFS_HOME_MOUNT_OPTS:-defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag}" "$(diskpart $FS_HOME)" "$MOUNT_DIR"
++      mount -o "${STEAMOS_BTRFS_HOME_MOUNT_OPTS:-defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,nodiscard}" "$(diskpart $FS_HOME)" "$MOUNT_DIR"
 +      btrfs subvolume create "$MOUNT_DIR/${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL:-@}"
 +      for d in "$MOUNT_DIR/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}"/deck/.local/share/Steam/steamapps/{downloading,temp} ; do
 +        if ! btrfs subvolume show "$d" &>/dev/null; then
