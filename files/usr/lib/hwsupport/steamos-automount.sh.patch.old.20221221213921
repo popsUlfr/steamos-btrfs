@@ -1,6 +1,6 @@
---- stable/usr/lib/hwsupport/steamos-automount.sh 2023-04-21 08:52:34.000000000 +0100
-+++ work/usr/lib/hwsupport/steamos-automount.sh   2023-04-21 18:05:21.000000000 +0100
-@@ -73,19 +73,63 @@ do_mount()
+--- stable/usr/lib/hwsupport/steamos-automount.sh	2022-12-21 08:52:34.000000000 +0100
++++ work/usr/lib/hwsupport/steamos-automount.sh	2022-12-21 21:39:21.919381544 +0100
+@@ -74,19 +74,63 @@
      ID_FS_LABEL=$(jq -r '.label | select(type == "string")' <<< "$dev_json")
      ID_FS_TYPE=$(jq -r '.fstype | select(type == "string")' <<< "$dev_json")
  
@@ -74,21 +74,20 @@
  
      # Prior to talking to udisks, we need all udev hooks (we were started by one) to finish, so we know it has knowledge
      # of the drive.  Our own rule starts us as a service with --no-block, so we can wait for rules to settle here
-@@ -101,9 +145,10 @@ do_mount()
+@@ -108,8 +152,9 @@
                  org.freedesktop.UDisks2                                                            \
                  /org/freedesktop/UDisks2/block_devices/"${DEVBASE}"                                \
                  org.freedesktop.UDisks2.Filesystem                                                 \
--                Mount 'a{sv}' 3                                                                    \
-+                Mount 'a{sv}' 4                                                                    \
-                   as-user s deck                                                                   \
+-                Mount 'a{sv}' 2                                                                    \
++                Mount 'a{sv}' 3                                                                    \
                    auth.no_user_interaction b true                                                  \
 +                  fstype                   s "$FSTYPE"                                             \
                    options                  s "$OPTS") || ret=$?
  
      if [[ $ret -ne 0 ]]; then
-@@ -136,6 +181,38 @@ do_mount()
-             ;;
-     esac
+@@ -126,6 +171,38 @@
+         exit 1
+     fi
  
 +    #### SteamOS Btrfs Begin ####
 +    if [[ "${ID_FS_TYPE}" == "btrfs" ]]; then
@@ -124,14 +123,14 @@
 +
      echo "**** Mounted ${DEVICE} at ${mount_point} ****"
  
-     # If Steam is running, notify it
-@@ -154,6 +231,22 @@ do_unmount()
-         # If we don't know the mount point then remove all broken symlinks
-         find /run/media -maxdepth 1 -xdev -xtype l -exec rm -- {} \;
-     fi
+     url=$(urlencode "${mount_point}")
+@@ -141,6 +218,22 @@
+     [[ -n $mount_point ]] || return 0
+     url=$(urlencode "${mount_point}")
+     send_steam_url "removelibraryfolder" "${url}"
 +    #### SteamOS Btrfs Begin ####
 +    if [[ -L /run/media/mmcblk0p1 && "$(realpath /run/media/mmcblk0p1)" == "$(realpath "${mount_point}")" ]]; then
-+        rm -f /run/media/mmcblk0p1
++         rm -f /run/media/mmcblk0p1
 +    fi
 +    if mountpoint -q "${mount_point}"/steamapps/compatdata; then
 +        /bin/umount -l -R "${mount_point}"/steamapps/compatdata
