@@ -1,9 +1,9 @@
---- stable/usr/lib/hwsupport/steamos-automount.sh 2023-07-27 18:05:21.000000000 +0100
-+++ work/usr/lib/hwsupport/steamos-automount.sh   2023-07-28 09:15:21.000000000 +0100
-@@ -106,19 +106,63 @@ do_mount()
+--- stable/usr/lib/hwsupport/steamos-automount.sh 2023-04-21 08:52:34.000000000 +0100
++++ work/usr/lib/hwsupport/steamos-automount.sh   2023-04-21 18:05:21.000000000 +0100
+@@ -73,19 +73,63 @@ do_mount()
      ID_FS_LABEL=$(jq -r '.label | select(type == "string")' <<< "$dev_json")
      ID_FS_TYPE=$(jq -r '.fstype | select(type == "string")' <<< "$dev_json")
-
+ 
 -    # Global mount options
 -    OPTS="rw,noatime"
 -
@@ -71,7 +71,7 @@
 +    echo -e "[defaults]\n${FSTYPE}_allow=${UDISKS2_ALLOW},${OPTS}" > "${udisks2_mount_options_conf}"
 +    trap 'rm -f "${udisks2_mount_options_conf}" ; [[ -f "${udisks2_mount_options_conf}.orig" ]] && mv -f "${udisks2_mount_options_conf}"{.orig,}' EXIT
 +    #### SteamOS Btrfs End ####
-
+ 
      # Prior to talking to udisks, we need all udev hooks (we were started by one) to finish, so we know it has knowledge
      # of the drive.  Our own rule starts us as a service with --no-block, so we can wait for rules to settle here
 @@ -101,9 +145,10 @@ do_mount()
@@ -84,12 +84,12 @@
                    auth.no_user_interaction b true                                                  \
 +                  fstype                   s "$FSTYPE"                                             \
                    options                  s "$OPTS") || ret=$?
-
+ 
      if [[ $ret -ne 0 ]]; then
-@@ -164,6 +209,38 @@ do_mount()
+@@ -136,6 +181,38 @@ do_mount()
              ;;
      esac
-
+ 
 +    #### SteamOS Btrfs Begin ####
 +    if [[ "${ID_FS_TYPE}" == "btrfs" ]]; then
 +        # Workaround for for Steam compression bug
@@ -123,9 +123,9 @@
 +    #### SteamOS Btrfs End ####
 +
      echo "**** Mounted ${DEVICE} at ${mount_point} ****"
-
+ 
      # If Steam is running, notify it
-@@ -182,6 +259,22 @@ do_unmount()
+@@ -154,6 +231,22 @@ do_unmount()
          # If we don't know the mount point then remove all broken symlinks
          find /run/media -maxdepth 1 -xdev -xtype l -exec rm -- {} \;
      fi
@@ -146,5 +146,5 @@
 +          force                    b true
 +    #### SteamOS Btrfs End ####
  }
-
+ 
  do_retrigger()
