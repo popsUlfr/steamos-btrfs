@@ -616,6 +616,7 @@ factory_pacman() {
   else
     if cmd pacman --root . \
       --config etc/pacman.conf \
+      --dbpath usr/lib/holo/pacmandb \
       --cachedir "${PACMAN_CACHE}" \
       --gpgdir etc/pacman.d/gnupg \
       --logfile /dev/null \
