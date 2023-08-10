@@ -920,7 +920,19 @@ rootfs_install_packages() {
   VAR_MOUNTPOINT="$(mktemp -d)"
   cmd mount "${VAR_DEVICE}" "${VAR_MOUNTPOINT}"
   if [[ -d "${VAR_MOUNTPOINT}"/lib/pacman ]]; then
-    cmd rsync -a --inplace --delete usr/share/factory/var/lib/pacman/ "${VAR_MOUNTPOINT}"/lib/pacman/
+    # parse DBPath from the pacman.conf
+    local pacman_dbpath
+    pacman_dbpath="$(sed -n 's|^DBPath\s*=\s*\(\S*\)|\1|p' etc/pacman.conf)"
+    if [[ -n "${pacman_dbpath}" ]]; then
+      # strip the starting / to make the path relative
+      pacman_dbpath="${pacman_dbpath:1}"
+      if [[ -d "${pacman_dbpath}" ]]; then
+        cmd rsync -a --inplace --delete "${pacman_dbpath}/" "${VAR_MOUNTPOINT}"/lib/pacman/
+      fi
+    # check for the old pacman database factory location
+    elif [[ -d usr/share/factory/var/lib/pacman ]]; then
+      cmd rsync -a --inplace --delete usr/share/factory/var/lib/pacman/ "${VAR_MOUNTPOINT}"/lib/pacman/
+    fi
   fi
   cmd umount -l "${VAR_MOUNTPOINT}"
   cmd rmdir "${VAR_MOUNTPOINT}" || true
