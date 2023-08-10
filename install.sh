@@ -597,19 +597,38 @@ factory_pacman() {
     cmd cp -a etc/pacman.conf{,.orig}
   fi
   cmd sed -i 's/^SigLevel\s*=.*$/SigLevel = Never/g' etc/pacman.conf
-  if cmd pacman --root . \
-    --config etc/pacman.conf \
-    --dbpath usr/share/factory/var/lib/pacman \
-    --cachedir "${PACMAN_CACHE}" \
-    --gpgdir etc/pacman.d/gnupg \
-    --logfile /dev/null \
-    --disable-download-timeout \
-    "$@" < <(yes 'y'); then
-    cmd mv -vf etc/pacman.conf{.orig,}
-    return 0
+  if [[ -d usr/share/factory/var/lib/pacman ]]; then
+    if cmd pacman --root . \
+      --config etc/pacman.conf \
+      --dbpath usr/share/factory/var/lib/pacman \
+      --cachedir "${PACMAN_CACHE}" \
+      --gpgdir etc/pacman.d/gnupg \
+      --logfile /dev/null \
+      --noconfirm \
+      --disable-download-timeout \
+      "$@"; then
+      cmd mv -vf etc/pacman.conf{.orig,}
+      return 0
+    else
+      cmd mv -vf etc/pacman.conf{.orig,}
+      return 1
+    fi
   else
-    cmd mv -vf etc/pacman.conf{.orig,}
-    return 1
+    if cmd pacman --root . \
+      --config etc/pacman.conf \
+      --dbpath usr/lib/holo/pacmandb \
+      --cachedir "${PACMAN_CACHE}" \
+      --gpgdir etc/pacman.d/gnupg \
+      --logfile /dev/null \
+      --noconfirm \
+      --disable-download-timeout \
+      "$@"; then
+      cmd mv -vf etc/pacman.conf{.orig,}
+      return 0
+    else
+      cmd mv -vf etc/pacman.conf{.orig,}
+      return 1
+    fi 
   fi
 }
 
@@ -900,15 +919,17 @@ rootfs_install_packages() {
       xargs -d'\n' -n 2 printf '%s %s\n' >>usr/lib/manifest.pacman
   fi
   cmd rm -rf "${PACMAN_CACHE}"
-  # synchronize the /var partition with the new pacman state if needed
-  eprint 'Synchronize the /var partition with the new pacman state if needed'
-  VAR_MOUNTPOINT="$(mktemp -d)"
-  cmd mount "${VAR_DEVICE}" "${VAR_MOUNTPOINT}"
-  if [[ -d "${VAR_MOUNTPOINT}"/lib/pacman ]]; then
-    cmd rsync -a --inplace --delete usr/share/factory/var/lib/pacman/ "${VAR_MOUNTPOINT}"/lib/pacman/
+  if [[ -d usr/share/factory/var/lib/pacman ]]; then
+    # synchronize the /var partition with the new pacman state if needed
+    eprint 'Synchronize the /var partition with the new pacman state if needed'
+    VAR_MOUNTPOINT="$(mktemp -d)"
+    cmd mount "${VAR_DEVICE}" "${VAR_MOUNTPOINT}"
+    if [[ -d "${VAR_MOUNTPOINT}"/lib/pacman ]]; then
+      cmd rsync -a --inplace --delete usr/share/factory/var/lib/pacman/ "${VAR_MOUNTPOINT}"/lib/pacman/
+    fi
+    cmd umount -l "${VAR_MOUNTPOINT}"
+    cmd rmdir "${VAR_MOUNTPOINT}" || true
   fi
-  cmd umount -l "${VAR_MOUNTPOINT}"
-  cmd rmdir "${VAR_MOUNTPOINT}" || true
   ONEXITERR=("${ONEXITERR[@]:1}")
 }
 
