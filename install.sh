@@ -597,13 +597,17 @@ factory_pacman() {
     cmd cp -a etc/pacman.conf{,.orig}
   fi
   cmd sed -i 's/^SigLevel\s*=.*$/SigLevel = Never/g' etc/pacman.conf
-  if cmd pacman --root . \
-    --config etc/pacman.conf \
-    --dbpath usr/share/factory/var/lib/pacman \
-    --cachedir "${PACMAN_CACHE}" \
-    --gpgdir etc/pacman.d/gnupg \
-    --logfile /dev/null \
-    --disable-download-timeout \
+  local pacman_args=(--root .
+    --config etc/pacman.conf
+    --cachedir "${PACMAN_CACHE}"
+    --gpgdir etc/pacman.d/gnupg
+    --logfile /dev/null
+    --disable-download-timeout)
+  # Check if a factory pacman database exists. Otherwise use default location.
+  if [[ -d usr/share/factory/var/lib/pacman ]]; then
+    pacman_args+=(--dbpath usr/share/factory/var/lib/pacman)
+  fi
+  if LC_ALL=C cmd pacman "${pacman_args[@]}" \
     "$@" < <(yes 'y'); then
     cmd mv -vf etc/pacman.conf{.orig,}
     return 0
