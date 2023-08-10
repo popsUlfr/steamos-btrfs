@@ -603,10 +603,21 @@ factory_pacman() {
     --gpgdir etc/pacman.d/gnupg
     --logfile /dev/null
     --disable-download-timeout)
-  # Check if a factory pacman database exists. Otherwise use default location.
-  if [[ -d usr/share/factory/var/lib/pacman ]]; then
+  local pacman_dbpath
+  # parse DBPath from the pacman.conf
+  pacman_dbpath="$(sed -n 's|^DBPath\s*=\s*\(\S*\)|\1|p' etc/pacman.conf)"
+  if [[ -n "${pacman_dbpath}" ]]; then
+    # strip the starting / to make the path relative
+    pacman_dbpath="${pacman_dbpath:1}"
+    if [[ ! -d "${pacman_dbpath}" ]]; then
+      cmd mkdir -p "${pacman_dbpath}"
+    fi
+    pacman_args+=(--dbpath "${pacman_dbpath}")
+  # check for the old pacman database factory location
+  elif [[ -d usr/share/factory/var/lib/pacman ]]; then
     pacman_args+=(--dbpath usr/share/factory/var/lib/pacman)
   fi
+  # Set LC_ALL=C to force yes prompt to 'y'
   if LC_ALL=C cmd pacman "${pacman_args[@]}" \
     "$@" < <(yes 'y'); then
     cmd mv -vf etc/pacman.conf{.orig,}
