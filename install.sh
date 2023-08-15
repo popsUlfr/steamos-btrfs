@@ -905,6 +905,18 @@ rootfs_install_packages() {
   pacman_repos_check_and_fix
   PACMAN_CACHE="$(mktemp -d)"
   factory_pacman --cachedir "${PACMAN_CACHE}" -Sy --needed --overwrite='*' "${PKGS[@]}"
+  # install rmlint version that is at least 2.10.2
+  if ! sort -C -V < <(echo '2.10.2-1' ;
+    factory_pacman -Qiq rmlint | sed -n 's/^Version\s*:\s*\(\S\+\)\s*$/\1/p'); then
+    eprint "Force install rmlint-2.10.2-1"
+    factory_pacman --cachedir "${PACMAN_CACHE}" -U "${WORKDIR}/data/rmlint-2.10.2-1-x86_64.pkg.tar.zst"
+  fi
+  # install duperemove version that is at least 0.12
+  if ! sort -C -V < <(echo '0.12-1' ;
+    factory_pacman -Qiq duperemove | sed -n 's/^Version\s*:\s*\(\S\+\)\s*$/\1/p'); then
+    eprint "Force install duperemove-0.12-1"
+    factory_pacman --cachedir "${PACMAN_CACHE}" -U "${WORKDIR}/data/duperemove-0.12-1-x86_64.pkg.tar.zst"
+  fi
   # patch the /usr/lib/manifest.pacman with the new packages
   if [[ -f usr/lib/manifest.pacman ]]; then
     eprint 'Patch the /usr/lib/manifest.pacman with the new packages'
