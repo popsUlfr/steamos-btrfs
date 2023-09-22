@@ -1013,7 +1013,7 @@ rootfs_patch_files_cleanup() {
       pf="/${pf}"
     fi
     cmd mv -vf "${pf}"{.orig,} || true
-  done < <(find "${WORKDIR}/files" -type f -name '*.patch' -print0)
+  done < <(find "${WORKDIR}/files" -type f,l -name '*.patch' -print0)
 }
 
 rootfs_patch_files() {
@@ -1042,7 +1042,7 @@ rootfs_patch_files() {
         epatch "${p}"
       fi
     fi
-  done < <(find "${WORKDIR}/files" -type f -name '*.patch' -print0)
+  done < <(find "${WORKDIR}/files" -type f,l -name '*.patch' -print0)
   ONEXITERR=("${ONEXITERR[@]:1}")
   ONEXITRESTORE=(rootfs_patch_files_cleanup "${ONEXITRESTORE[@]}")
 }
