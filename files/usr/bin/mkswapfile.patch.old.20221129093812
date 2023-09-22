@@ -1,0 +1,20 @@
+--- stable/usr/bin/mkswapfile	2022-07-01 00:14:02.000000000 +0200
++++ work/usr/bin/mkswapfile	2022-11-29 10:38:12.647042741 +0100
+@@ -28,6 +28,17 @@
+ 
+ [ -e "$SWAPFILE" ] && fail "File '$SWAPFILE' already exists"
+ 
++#### SteamOS Btrfs Begin ####
++if [[ "$(findmnt -n -o FSTYPE "$(dirname "$SWAPFILE")")" == "btrfs" ]]
++then
++    SWAPSUBVOLUME="$(dirname "$SWAPFILE")/@$(basename "$SWAPFILE")"
++    [[ ! -d "$SWAPSUBVOLUME" ]] && btrfs subvolume create "$SWAPSUBVOLUME"
++    chattr +C "$SWAPSUBVOLUME"
++    ln -s "$(basename "$SWAPSUBVOLUME")/$(basename "$SWAPFILE")" "$SWAPFILE"
++    SWAPFILE="$SWAPSUBVOLUME/$(basename "$SWAPFILE")"
++fi
++#### SteamOS Btrfs End ####
++
+ dd if=/dev/zero of="$SWAPFILE" bs=1M count="$SWAPSIZE"
+ chmod 600 "$SWAPFILE"
+ mkswap "$SWAPFILE"
