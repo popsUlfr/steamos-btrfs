@@ -596,7 +596,7 @@ factory_pacman() {
   if [[ ! -f etc/pacman.conf.orig ]]; then
     cmd cp -a etc/pacman.conf{,.orig}
   fi
-  cmd sed -i 's/^SigLevel\s*=.*$/SigLevel = Never/g' etc/pacman.conf
+  cmd sed -i -e 's/^SigLevel\s*=.*$/SigLevel = Never/g' -e 's/^LocalFileSigLevel\s*=.*$/LocalFileSigLevel = Never/g' etc/pacman.conf
   local pacman_args=(--root .
     --config etc/pacman.conf
     --cachedir "${PACMAN_CACHE}"
@@ -911,11 +911,11 @@ rootfs_install_packages() {
     eprint "Force install rmlint-2.10.2-1"
     factory_pacman --cachedir "${PACMAN_CACHE}" -U "${WORKDIR}/data/rmlint-2.10.2-1-x86_64.pkg.tar.zst"
   fi
-  # install duperemove version that is at least 0.12
-  if ! sort -C -V < <(echo '0.12-1' ;
+  # install duperemove version that is at least 0.14.1
+  if ! sort -C -V < <(echo '0.14.1-1' ;
     factory_pacman -Qiq duperemove | sed -n 's/^Version\s*:\s*\(\S\+\)\s*$/\1/p'); then
-    eprint "Force install duperemove-0.12-1"
-    factory_pacman --cachedir "${PACMAN_CACHE}" -U "${WORKDIR}/data/duperemove-0.12-1-x86_64.pkg.tar.zst"
+    eprint "Force install duperemove-0.14.1-1"
+    factory_pacman --cachedir "${PACMAN_CACHE}" -U "${WORKDIR}/data/duperemove-0.14.1-1-x86_64.pkg.tar.zst"
   fi
   # patch the /usr/lib/manifest.pacman with the new packages
   if [[ -f usr/lib/manifest.pacman ]]; then
@@ -1142,21 +1142,8 @@ specialty_timers_enable() {
   cmd ln -s /usr/lib/systemd/system/fstrim.timer "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/systemd/system/timers.target.wants/fstrim.timer" || true
   cmd ln -s /usr/lib/systemd/system/btrfs-dedup@.timer "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/systemd/system/timers.target.wants/btrfs-dedup@home.timer" || true
   cmd ln -s /usr/lib/systemd/system/btrfs-dedup@.timer "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/systemd/system/timers.target.wants/btrfs-dedup@run-media-mmcblk0p1.timer" || true
-  # write a service override to set cpu affinity
-  if [[ ! -f "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/systemd/system/btrfs-dedup@.service.d/override.conf" ]]; then
-    local cpu_affinity=()
-    # pin to the last core
-    readarray -t cpu_affinity < <(lscpu --parse=CORE,CPU | sort -n -t, -k1,1 | tail -n 2 | cut -d, -f2)
-    if [[ "${#cpu_affinity[@]}" -gt 0 ]]; then
-      mkdir -p "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/systemd/system/btrfs-dedup@.service.d"
-      (
-        IFS=','
-        cat <<EOF >"${VAR_MOUNTPOINT}/lib/overlays/etc/upper/systemd/system/btrfs-dedup@.service.d/override.conf"
-[Service]
-CPUAffinity=${cpu_affinity[*]}
-EOF
-      )
-    fi
+  if [[ -f "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/systemd/system/btrfs-dedup@.service.d/override.conf" ]]; then
+    cmd rm -f "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/systemd/system/btrfs-dedup@.service.d/override.conf" || true
   fi
   # try to remount /etc overlay to refresh the lowerdir otherwise the files look corrupted
   eprint "Remount /etc overlay to refresh the changed files"
