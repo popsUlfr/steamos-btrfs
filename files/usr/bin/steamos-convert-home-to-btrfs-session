@@ -10,6 +10,13 @@ then
     exec dbus-launch --exit-with-session "$0" "$@"
 fi
 
+dimensions="$(xdpyinfo | grep -oP 'dimensions:\s+\K\S+')"
+if [[ "${dimensions%x*}" -gt "${dimensions#*x}" ]]
+then
+    LINES_LIMIT="37"
+    LINE_LIMIT="128"
+fi
+
 # dark mode on
 mkdir -p /tmp/kdedefaults
 cat <<'EOF' > /tmp/kdedefaults/kdeglobals
