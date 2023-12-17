@@ -973,7 +973,7 @@ rootfs_fstab_patch_restore() {
 }
 
 rootfs_fstab_patch() {
-  if is_true "${NOCONVERTHOME}" || [[ ! -f 'etc/fstab' ]]; then
+  if { is_true "${NOCONVERTHOME}" && [[ "$(blkid -o value -s TYPE "${HOME_DEVICE}")" != 'btrfs' ]] ;} || [[ ! -f 'etc/fstab' ]]; then
     return
   fi
   ONEXITERR=(rootfs_fstab_patch_cleanup "${ONEXITERR[@]}")
