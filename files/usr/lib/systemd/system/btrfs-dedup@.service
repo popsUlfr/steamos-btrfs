@@ -5,6 +5,7 @@ Description=Btrfs deduplication on %f
 EnvironmentFile=-/etc/conf.d/btrfs-dedup
 ExecStart=/usr/bin/btrfs-dedup %f
 ExecReload=/usr/bin/btrfs-dedup --powerchange
+PIDFile=/run/btrfs-dedup/%i.pid
 Nice=19
 CPUSchedulingPolicy=batch
 IOSchedulingClass=best-effort

@@ -69,9 +69,40 @@ if [[ "${FLOCKER:-}" != "$LOCKFILE" ]]; then
 	exec env FLOCKER="$LOCKFILE" flock -en "$LOCKFILE" "$0" "$@"
 fi
 
-WATCHERPID="$$"
+WATCHERPID="$BASHPID"
 TIMEOUTPID=''
 MAINPID=''
+
+get_all_child_pids() {
+	local pids=()
+	local stack_pids=("$1")
+	while [[ "${#stack_pids[@]}" -gt 0 ]]; do
+		local pid="${stack_pids[0]}"
+		stack_pids=("${stack_pids[@]:1}")
+		local pos="${#stack_pids[@]}"
+		readarray -t -O "$pos" stack_pids < <(ps --ppid "$pid" -o pid= | sed 's/\s\+//g')
+		pids+=("${stack_pids[@]:$pos}")
+	done
+	if [[ "${#pids[@]}" -gt 0 ]]; then
+		printf '%s\n' "${pids[@]}"
+	fi
+}
+
+get_current_thread_pool() {
+	local nrcpus=$(($(nproc)+2))
+	local tp=$((nrcpus < 8 ? nrcpus : 8))
+	local opts=()
+	readarray -t -d ',' opts < <(findmnt -n -u -o OPTIONS "$(stat -c '%m' "$TARGET"/)")
+	for o in "${opts[@]}"; do
+		local k="${o%%=*}"
+		local v="${o#*=}"
+		if [[ "$k" == 'thread_pool' ]]; then
+			echo "$v"
+			return
+		fi
+	done
+	echo "$tp"
+}
 
 ONCE=0
 # shellcheck disable=SC2317
@@ -81,6 +112,7 @@ quit() {
 		exit "$exit_code"
 	fi
 	ONCE=1
+	trap '' SIGHUP
 	if [[ "$exit_code" -gt 128 ]]; then
 		exit_code=0
 	fi
@@ -97,7 +129,9 @@ quit() {
 	fi
 	if [[ -n "$MAINPID" ]]; then
 		local ret=0
-		kill -s SIGCONT "$MAINPID" || true
+		local pids=("$MAINPID")
+		readarray -t -O 1 pids < <(get_all_child_pids "$MAINPID")
+		kill -s SIGCONT "${pids[@]}" || true
 		kill "$MAINPID" || true
 		wait "$MAINPID" || ret="$?"
 		MAINPID=''
@@ -109,30 +143,20 @@ quit() {
 }
 trap quit SIGINT SIGQUIT SIGTERM EXIT ERR
 
-# shellcheck disable=SC2317
-get_all_child_pids() {
-	local pids=()
-	local stack_pids=("$1")
-	while [[ "${#stack_pids[@]}" -gt 0 ]]; do
-		local pid="${stack_pids[0]}"
-		stack_pids=("${stack_pids[@]:1}")
-		local pos="${#stack_pids[@]}"
-		readarray -t -O "$pos" stack_pids < <(ps --ppid "$pid" -o pid= | sed 's/\s\+//g')
-		pids+=("${stack_pids[@]:$pos}")
-	done
-	printf '%s\n' "${pids[@]}"
-}
-
 powerchange() {
 	if ! is_true "$POWERCHANGE_DISABLE" && [[ -f "$POWER_SUPPLY_ONLINE_FILE" ]]; then
-		local pids=()
-		readarray -t pids < <(get_all_child_pids "$MAINPID")
+		local pids=("$MAINPID")
+		readarray -t -O 1 pids < <(get_all_child_pids "$MAINPID")
 		if [[ "$(cat "$POWER_SUPPLY_ONLINE_FILE")" == "1" ]]; then
-			eprint "Resuming btrfs-dedup for ${TARGET@Q}."
-			cmd kill -s SIGCONT "$MAINPID" "${pids[@]}" || true
+			if [[ "$(ps --pid "$MAINPID" -o stat=)" =~ ^T ]]; then
+				eprint "Resuming btrfs-dedup for ${TARGET@Q}."
+				cmd kill -s SIGCONT "${pids[@]}" || true
+			fi
 		else
-			eprint "Pausing btrfs-dedup for ${TARGET@Q}."
-			cmd kill -s SIGSTOP "$MAINPID" "${pids[@]}" || true
+			if ! [[ "$(ps --pid "$MAINPID" -o stat=)" =~ ^T ]]; then
+				eprint "Pausing btrfs-dedup for ${TARGET@Q}."
+				cmd kill -s SIGSTOP "${pids[@]}" || true
+			fi
 		fi
 	fi
 }
@@ -179,7 +203,10 @@ fi
 (
 	set -euo pipefail
 
+	MAINPID="$BASHPID"
 	WORKERPID=''
+
+	OLDTP="$(get_current_thread_pool)"
 
 	ONCE=0
 	# shellcheck disable=SC2317
@@ -195,7 +222,9 @@ fi
 		cd /
 		if [[ -n "$WORKERPID" ]]; then
 			local ret=0
-			kill -s SIGCONT "$WORKERPID" || true
+			local pids=("$WORKERPID")
+			readarray -t -O 1 pids < <(get_all_child_pids "$WORKERPID")
+			kill -s SIGCONT "${pids[@]}" || true
 			kill "$WORKERPID" || true
 			wait "$WORKERPID" || ret="$?"
 			WORKERPID=''
@@ -208,6 +237,10 @@ fi
 		fi
 		if [[ -f "$WORKDIR"/"$DUPEREMOVE_DB" ]]; then
 			cmd cp -a "$WORKDIR"/"$DUPEREMOVE_DB" "$TARGET"/ || true
+		fi
+		if [[ "$(get_current_thread_pool)" != "$OLDTP" ]]; then
+			eprint "Reverting thread_pool size to $OLDTP."
+			cmd mount -o remount,thread_pool="$OLDTP" "$TARGET"/ || true
 		fi
 		cmd rm -rf "$WORKDIR" || true
 		exit "$exit_code"
@@ -232,10 +265,13 @@ fi
 		else
 			tp=1
 		fi
-		eprint "Adjust thread_pool size to $tp."
-		cmd mount -o remount,thread_pool="$tp" "$TARGET"/
+		if [[ "$tp" != "$OLDTP" ]]; then
+			eprint "Adjust thread_pool size to $tp."
+			cmd mount -o remount,thread_pool="$tp" "$TARGET"/
+		fi
 	fi
 	cmd find "$TARGET"/ -mindepth 1 -maxdepth 1 -mtime +"$DB_MAX_AGE" \( -name "$RMLINT_DB" -or -name "$DUPEREMOVE_DB" \) -delete
+	powerchange || true
 	cmd compsize "$TARGET"/ &
 	worker_waiter
 	if ! is_true "$RMLINT_SKIP"; then
@@ -281,7 +317,6 @@ fi
 	fi
 ) &
 MAINPID="$!"
-powerchange
 while true; do
 	ret=0
 	wait "$MAINPID" || ret="$?"
