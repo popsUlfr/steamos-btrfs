@@ -109,10 +109,24 @@ quit() {
 }
 trap quit SIGINT SIGQUIT SIGTERM EXIT ERR
 
+# shellcheck disable=SC2317
+get_all_child_pids() {
+	local pids=()
+	local stack_pids=("$1")
+	while [[ "${#stack_pids[@]}" -gt 0 ]]; do
+		local pid="${stack_pids[0]}"
+		stack_pids=("${stack_pids[@]:1}")
+		local pos="${#stack_pids[@]}"
+		readarray -t -O "$pos" stack_pids < <(ps --ppid "$pid" -o pid= | sed 's/\s\+//g')
+		pids+=("${stack_pids[@]:$pos}")
+	done
+	printf '%s\n' "${pids[@]}"
+}
+
 powerchange() {
 	if ! is_true "$POWERCHANGE_DISABLE" && [[ -f "$POWER_SUPPLY_ONLINE_FILE" ]]; then
 		local pids=()
-		readarray -t pids < <(ps --ppid "$MAINPID" -o pid= | sed 's/\s\+//g')
+		readarray -t pids < <(get_all_child_pids "$MAINPID")
 		if [[ "$(cat "$POWER_SUPPLY_ONLINE_FILE")" == "1" ]]; then
 			eprint "Resuming btrfs-dedup for ${TARGET@Q}."
 			cmd kill -s SIGCONT "$MAINPID" "${pids[@]}" || true
