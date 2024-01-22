@@ -20,7 +20,7 @@ NOAUTOUPDATE_DEFAULT=0
 NOAUTOUPDATE_FILE_FLAG="${STEAMOS_BTRFS_INSTALL_PATH}/disableautoupdate"
 NOCONVERTHOME_DEFAULT=0
 NOCONVERTHOME_FILE_FLAG="${STEAMOS_BTRFS_INSTALL_PATH}/disableconverthome"
-STEAMOS_BTRFS_HOME_MOUNT_OPTS_DEFAULT='defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag'
+STEAMOS_BTRFS_HOME_MOUNT_OPTS_DEFAULT='defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,nodiscard'
 STEAMOS_BTRFS_HOME_MOUNT_SUBVOL_DEFAULT='@'
 STEAMOS_BTRFS_ROOTFS_PACMAN_EXTRA_PKGS_DEFAULT=''
 CONFIGFILE='/etc/default/steamos-btrfs'

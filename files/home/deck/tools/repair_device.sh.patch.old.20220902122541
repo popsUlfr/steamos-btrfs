@@ -1,0 +1,57 @@
+--- stable/home/deck/tools/repair_device.sh	2022-06-06 11:11:14.722878785 +0200
++++ work/home/deck/tools/repair_device.sh	2022-09-02 14:25:41.739618634 +0200
+@@ -70,6 +70,7 @@
+ # Helper to format
+ fmt_ext4()  { [[ $# -eq 2 && -n $1 && -n $2 ]] || die; cmd sudo mkfs.ext4 -F -L "$1" "$2"; }
+ fmt_fat32() { [[ $# -eq 2 && -n $1 && -n $2 ]] || die; cmd sudo mkfs.vfat -n"$1" "$2"; }
++fmt_btrfs() { [[ $# -eq 2 && -n $1 && -n $2 ]] || die; cmd sudo mkfs.btrfs -f -L "$1" "$2"; }
+ 
+ ##
+ ## Prompt mechanics - currently using Zenity
+@@ -191,7 +192,11 @@
+     verifypart "$(diskpart $FS_EFI_B)" vfat efi-B
+     verifypart "$(diskpart $FS_VAR_A)" ext4 var-A
+     verifypart "$(diskpart $FS_VAR_B)" ext4 var-B
+-    verifypart "$(diskpart $FS_HOME)" ext4 home
++    if [[ -f /usr/share/steamos-btrfs/disableconverthome ]]; then
++      verifypart "$(diskpart $FS_HOME)" ext4 home
++    else
++      verifypart "$(diskpart $FS_HOME)" btrfs home
++    fi
+   fi
+ 
+   # clear the var partition (user data), but also if we are reinstalling the OS
+@@ -204,9 +209,30 @@
+ 
+   if [[ $writeHome = 1 ]]; then
+     estat "Creating home partition..."
+-    cmd sudo mkfs.ext4 -F -O casefold -T huge -L home "$(diskpart $FS_HOME)"
+-    estat "Remove the reserved blocks on the home partition..."
+-    tune2fs -m 0 "$(diskpart $FS_HOME)"
++    if [[ -f /usr/share/steamos-btrfs/disableconverthome ]]; then
++      cmd sudo mkfs.ext4 -F -O casefold -T huge -L home "$(diskpart $FS_HOME)"
++      estat "Remove the reserved blocks on the home partition..."
++      tune2fs -m 0 "$(diskpart $FS_HOME)"
++    else
++      if [[ -f /etc/default/steamos-btrfs ]]; then
++        source /etc/default/steamos-btrfs
++      fi
++      fmt_btrfs home "$(diskpart $FS_HOME)"
++      MOUNT_DIR="/mnt"
++      mkdir -p "$MOUNT_DIR"
++      mount -o "${STEAMOS_BTRFS_HOME_MOUNT_OPTS:-defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag}" "$(diskpart $FS_HOME)" "$MOUNT_DIR"
++      btrfs subvolume create "$MOUNT_DIR/${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL:-@}"
++      for d in "$MOUNT_DIR/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}"/deck/.local/share/Steam/steamapps/{downloading,temp} ; do
++        if ! btrfs subvolume show "$d" &>/dev/null; then
++          mkdir -p "$d"
++          rm -rf "$d"
++          btrfs subvolume create "$d"
++          chattr +C "$d"
++          chown -R 1000:1000 "$MOUNT_DIR/${STEAMOS_BTRFS_SDCARD_BTRFS_MOUNT_SUBVOL:-@}"/deck
++        fi
++      done
++      umount -l "$MOUNT_DIR"
++    fi
+   fi
+ 
+   if [[ $writeOS = 1 ]]; then

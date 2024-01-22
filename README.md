@@ -22,7 +22,7 @@ Btrfs with its transparent compression and deduplication capabilities can achiev
 - **Survives updates and branch changes!**
 - Steam's `downloading` and `temp` folders as subvolumes with COW disabled
 - Update check
-- Non-linux filesystems (fat, exfat, ntfs) have their `compatdata` folder bind mounted from the internal storage for proton support by default (and don't forget that with fat you are restricted to a maximum of 4GB per file!)
+- Non-linux filesystems (fat, exfat, ntfs) can have their `compatdata` folder bind mounted from the internal storage for proton support if `STEAMOS_BTRFS_SDCARD_COMPATDATA_BIND_MOUNT` is set (and don't forget that with fat you are restricted to a maximum of 4GB per file!)
 
 ![Btrfs /home conversion progress dialog](data/steamos-btrfs-conversion.webp "Btrfs /home conversion progress dialog")
 
@@ -41,8 +41,6 @@ The original files that have been changed are backed up with the `.orig` extensi
 It is safe to revert to the original files if the btrfs conversion was not attempted.
 
 **Please make sure you have enough free space before attempting the conversion. At least 10-20GiB and/or 10-20% free space should usually be fine.**
-
-**When mounting an SD card that is fat, exfat, ntfs formatted:** the eject function in the Steam Client will not work because the `compatdata` folder is bind mounted from the internal storage. To manually unmount: `sudo systemctl stop sdcard-mount@mmcblk0p1.service` or disable via [Configuration options](#configuration-options).
 
 **Double-click the downloaded file**
 
@@ -116,7 +114,7 @@ Example: '/usr/share/steamos-btrfs/install.sh' --nogui /dev/disk/by-partsets/sel
 Expert config options:
   --STEAMOS_BTRFS_HOME_MOUNT_OPTS OPTS             set the /home mount options to use
                                                    (env var: 'STEAMOS_BTRFS_HOME_MOUNT_OPTS')
-                                                   (default: 'defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag')
+                                                   (default: 'defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,nodiscard')
   --STEAMOS_BTRFS_HOME_MOUNT_SUBVOL SUBVOL         set the /home subvolume name to use
                                                    (env var: 'STEAMOS_BTRFS_HOME_MOUNT_SUBVOL')
                                                    (default: '@')
@@ -152,7 +150,7 @@ or
 sudo rm /etc/systemd/system/steamos-convert-home-to-btrfs.service
 ```
 
-**Disclaimer about mounting fat, exfat, ntfs filesystems: the eject functionality in the Steam client will not work because the `compatdata` folder is bind mounted from the internal storage. To unmount the SD card manually execute:**
+**Disclaimer about mounting fat, exfat, ntfs filesystems if `STEAMOS_BTRFS_SDCARD_COMPATDATA_BIND_MOUNT` is set: the eject functionality in the Steam client will not work because the `compatdata` folder is bind mounted from the internal storage. To unmount the SD card manually execute:**
 
 ```sh
 sudo systemctl stop sdcard-mount@mmcblk0p1.service
@@ -165,17 +163,16 @@ This will prevent proton games from working.
 
 At any time you can rerun the installer and let it download the latest version and go through the installation again to enable the latest changes or simply apply changed settings (`/usr/share/steamos-btrfs/install.sh`).
 Disabling the home conversion won't have any effect on an already converted home partition.
-You should still select the `Convert /home` option if you want to update the home partition's mount flags modified through `/etc/default/steamos-btrfs`.
 
 At times updates may change the default config options and you may want to merge the changes with your own: [Configuration options](#configuration-options)
 
 If you don't want to be prompted while running the script you can set the `NONINTERACTIVE=1` environment variable:
 ```sh
-NONINTERACTIVE=1 /usr/share/steamos-btrfs/install.sh
+sudo NONINTERACTIVE=1 /usr/share/steamos-btrfs/install.sh
 ```
 or as command line argument:
 ```sh
-/usr/share/steamos-btrfs/install.sh --noninteractive
+sudo /usr/share/steamos-btrfs/install.sh --noninteractive
 ```
 
 You may force off the gui prompts with `NOGUI=1` or `--nogui`, it should otherwise detect if a desktop environment is running and fallback to text prompts
@@ -210,6 +207,7 @@ The following mount options are used by default:
 - `autodefrag`: small random writes are queued up for defragmentation, invests more effort during writes to achieve as much contiguous data as possible. Interesting for games where more fragmentation can lead to loading stutter.
 - `subvol=@`: by default it will create a subvolume `@` (can be changed in the config) which is used as real root of the filesystem. SD Cards formatted as btrfs will be searched for the `@` subvolume or fallback to `/`.
 - `ssd_spread`:  attempts to allocate into bigger and aligned chunks of unused space for a potential performance boost on SD cards.
+- `nodiscard`: disables continuous discarding of freed blocks. There's already an fstrim timer that will periodically TRIM the drives.
 - `commit`: (not by default) the commit interval, you may achieve good results by raising it to something like 120 seconds `commit=120` especially on the SD card
 
 ### F2FS mount options
@@ -287,7 +285,9 @@ sudo mount -o remount /etc
 
 The script installs a `btrfs-dedup@.timer` and `btrfs-dedup@.service` that runs a background deduplication using `rmlint` and `duperemove` once a week.
 
-You can stop and resume the deduplication at any time, `duperemove` in some cases can take forever so the process is limited to 4 hours max.
+It has a configuration file at `/etc/conf.d/btrfs-dedup` where you can modify the behaviour. By default dedup will only run when the power adapter is connected (pause/resume on AC).
+
+You can stop and resume the deduplication at any time, `duperemove` in some cases can take forever so the process is limited to 4 hours max by default.
 
 For `/home`:
 ```sh
@@ -299,6 +299,12 @@ For `/run/media/mmcblk0p1` (SD card):
 ```sh
 sudo systemctl start --no-block btrfs-dedup@run-media-mmcblk0p1.service
 sudo systemctl stop --no-block btrfs-dedup@run-media-mmcblk0p1.service
+```
+
+For any other path you can do:
+```sh
+sudo systemctl start --no-block btrfs-dedup@"$(systemd-escape -p <path/to/dedup>)".service
+sudo systemctl stop --no-block btrfs-dedup@"$(systemd-escape -p <path/to/dedup>)".service
 ```
 
 ### Manual dedup
@@ -313,8 +319,8 @@ sudo compsize /home
 First use `rmlint` on `/home`:
 ```sh
 cd /tmp
-sudo rmlint --types="duplicates" --config=sh:handler=clone /home
-sudo ./rmlint.sh -d -p -r -k
+sudo rmlint --hidden --types="duplicates" --config=sh:handler=clone --xattr /home
+sudo ./rmlint.sh -d -r -k
 sudo rm -r rmlint*
 ```
 
