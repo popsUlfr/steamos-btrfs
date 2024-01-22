@@ -18,8 +18,8 @@
 #DB_MAX_AGE="14"
 # set to 1 to disable pausing the deduplication process when power chord is disconnected
 #POWERCHANGE_DISABLE="0"
-# set to 1 to disable executing rmlint replay before doing a proper pass
-#RMLINT_REPLAY_DISABLE="0"
+# set to 0 to enable executing rmlint replay before doing a proper pass
+#RMLINT_REPLAY_DISABLE="1"
 # set to 1 to skip rmlint
 #RMLINT_SKIP="0"
 # set to 1 to skip duperemove
