@@ -14,6 +14,7 @@ POWERCHANGE_DISABLE="${POWERCHANGE_DISABLE:-0}"
 RMLINT_REPLAY_DISABLE="${RMLINT_REPLAY_DISABLE:-0}"
 RMLINT_SKIP="${RMLINT_SKIP:-0}"
 DUPEREMOVE_SKIP="${DUPEREMOVE_SKIP:-0}"
+THREADPOOL_ADJUST_DISABLE="${THREADPOOL_ADJUST_DISABLE:-0}"
 
 UDEV_RULE_TMPL='SUBSYSTEM=="power_supply", RUN+="%s --powerchange"\n'
 
@@ -240,7 +241,7 @@ fi
 		fi
 		if [[ "$(get_current_thread_pool)" != "$OLDTP" ]]; then
 			eprint "Reverting thread_pool size to $OLDTP."
-			cmd mount -o remount,thread_pool="$OLDTP" "$TARGET"/ || true
+			cmd mount -o remount,thread_pool="$OLDTP" "$(stat -c '%m' "$TARGET"/)" || true
 		fi
 		cmd rm -rf "$WORKDIR" || true
 		exit "$exit_code"
@@ -257,7 +258,7 @@ fi
 	cmd mkdir -p "$WORKDIR"
 	cd "$WORKDIR"
 	nrcpus="$(nproc)"
-	if [[ "$nrcpus" -le 8 ]]; then
+	if ! is_true "$THREADPOOL_ADJUST_DISABLE" && [[ "$nrcpus" -le 8 ]]; then
 		if [[ "$nrcpus" -gt 4 ]]; then
 			tp=4
 		elif [[ "$nrcpus" -ge 2 ]]; then
@@ -267,7 +268,7 @@ fi
 		fi
 		if [[ "$tp" != "$OLDTP" ]]; then
 			eprint "Adjust thread_pool size to $tp."
-			cmd mount -o remount,thread_pool="$tp" "$TARGET"/
+			cmd mount -o remount,thread_pool="$tp" "$(stat -c '%m' "$TARGET"/)"
 		fi
 	fi
 	cmd find "$TARGET"/ -mindepth 1 -maxdepth 1 -mtime +"$DB_MAX_AGE" \( -name "$RMLINT_DB" -or -name "$DUPEREMOVE_DB" \) -delete

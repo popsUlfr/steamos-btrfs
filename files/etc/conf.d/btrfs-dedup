@@ -24,3 +24,5 @@
 #RMLINT_SKIP="0"
 # set to 1 to skip duperemove
 #DUPEREMOVE_SKIP="0"
+# set to 1 to prevent adjusting the filesystem thread pool
+#THREADPOOL_ADJUST_DISABLE="0"
