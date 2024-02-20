@@ -1157,14 +1157,6 @@ specialty_timers_enable() {
   ONEXITERR=("${ONEXITERR[@]:1}")
 }
 
-home_copy_desktop_file() {
-  eprint "Copy 'steamos-btrfs.desktop' file to the Desktop"
-  cmd mkdir -p "${HOME_MOUNTPOINT}"/deck/{Desktop,.local/share/applications} || true
-  cmd cp -a "${WORKDIR}/steamos-btrfs.desktop" "${HOME_MOUNTPOINT}/deck/Desktop/" || true
-  cmd cp -a "${WORKDIR}/steamos-btrfs.desktop" "${HOME_MOUNTPOINT}/deck/.local/share/applications/" || true
-  cmd chown deck:deck "${HOME_MOUNTPOINT}"/deck/{Desktop{,/steamos-btrfs.desktop},.local{,/share{,/applications{,/steamos-btrfs.desktop}}}} || true
-}
-
 rootfs_inject_cleanup() {
   export PATH="${oPATH}"
   export LD_LIBRARY_PATH="${oLD_LIBRARY_PATH}"
@@ -1199,7 +1191,6 @@ rootfs_inject() {
   rootfs_copy_files
   home_steam_download_workaround
   specialty_timers_enable
-  home_copy_desktop_file
   cmd btrfs property set "${ROOTFS_MOUNTPOINT}" ro true
   export PATH="${oPATH}"
   export LD_LIBRARY_PATH="${oLD_LIBRARY_PATH}"
