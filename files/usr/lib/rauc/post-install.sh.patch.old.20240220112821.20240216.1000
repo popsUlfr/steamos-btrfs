@@ -1,0 +1,12 @@
+--- main/usr/lib/rauc/post-install.sh	2024-02-09 21:43:36.000000000 +0100
++++ work/usr/lib/rauc/post-install.sh	2024-02-20 12:28:21.774048997 +0100
+@@ -482,6 +482,9 @@
+     umount "$VAR_FROM"
+ fi
+ 
++# SteamOS Btrfs
++NONINTERACTIVE=1 /usr/share/steamos-btrfs/install.sh "$SYMLINKS_DIR/$UPDATED_SLOT/rootfs"
++
+ #
+ # Handle the bootloaders and network configuration
+ #
