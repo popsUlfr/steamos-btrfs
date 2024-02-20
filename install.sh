@@ -1055,6 +1055,12 @@ rootfs_remove_old_files() {
 }
 
 rootfs_copy_files_cleanup() {
+  if [[ -d "${VAR_MOUNTPOINT}" ]]; then
+    if mountpoint -q "${VAR_MOUNTPOINT}"; then
+      cmd umount -l "${VAR_MOUNTPOINT}" || true
+    fi
+    cmd rmdir "${VAR_MOUNTPOINT}" || true
+  fi
   while read -r -d '' p; do
     cmd rm -f "${p}" || true
     cmd rmdir -p --ignore-fail-on-non-empty "$(dirname "${p}")" || true
@@ -1092,6 +1098,14 @@ rootfs_copy_files() {
     eprint 'Auto-update enabled'
     cmd rm -f "${NOAUTOUPDATE_FILE_FLAG#/}" || true
   fi
+  VAR_MOUNTPOINT="$(mktemp -d)"
+  cmd mount "${VAR_DEVICE}" "${VAR_MOUNTPOINT}"
+  if [[ ! -f "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/${CONFIGFILE#/etc/}" ]]; then
+    cmd mkdir -p "$(dirname "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/${CONFIGFILE#/etc/}")"
+    cmd cp -a "${CONFIGFILE#/}" "${VAR_MOUNTPOINT}/lib/overlays/etc/upper/${CONFIGFILE#/etc/}"
+  fi
+  cmd umount -l "${VAR_MOUNTPOINT}"
+  cmd rmdir "${VAR_MOUNTPOINT}" || true
   # try to remount /etc overlay to refresh the lowerdir otherwise the files look corrupted
   eprint "Remount /etc overlay to refresh the installed files"
   cmd mount -o remount /etc || true
