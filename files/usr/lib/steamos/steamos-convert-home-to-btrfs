@@ -91,7 +91,7 @@ home_rsync_exclusions() {
             du_excls+=("--exclude=${e}")
         done
         local size=0
-        size="$(du -b -s -x "${du_excls[@]}" "$HOME_MOUNTPOINT"/)"
+        size="$(du -b -s -x "${du_excls[@]}" "$HOME_MOUNTPOINT"/ | awk '{print $1}')"
         if [[ "$size" -le "$max_size" ]]
         then
             printf '%s\0' "${exclusions[@]:0:i}"
