@@ -307,6 +307,22 @@ sudo systemctl start --no-block btrfs-dedup@"$(systemd-escape -p <path/to/dedup>
 sudo systemctl stop --no-block btrfs-dedup@"$(systemd-escape -p <path/to/dedup>)".service
 ```
 
+If you wish to disable the scheduled deduplication timers:
+```sh
+sudo systemctl stop --no-block btrfs-dedup@home.timer
+sudo systemctl mask --no-block btrfs-dedup@home.timer
+sudo systemctl stop --no-block btrfs-dedup@run-media-mmcblk0p1.timer
+sudo systemctl mask --no-block btrfs-dedup@run-media-mmcblk0p1.timer
+```
+
+To turn them back on:
+```sh
+sudo systemctl unmask --no-block btrfs-dedup@home.timer
+sudo systemctl start --no-block btrfs-dedup@home.timer
+sudo systemctl unmask --no-block btrfs-dedup@run-media-mmcblk0p1.timer
+sudo systemctl start --no-block btrfs-dedup@run-media-mmcblk0p1.timer
+```
+
 ### Manual dedup
 
 Using first [rmlint](https://rmlint.readthedocs.io/en/latest/) for fast efficient file deduplication and finally [duperemove](https://github.com/markfasheh/duperemove) for block based deduplication is the most effective way to potentially reduce disk space.
