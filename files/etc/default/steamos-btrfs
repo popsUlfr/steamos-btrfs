@@ -1,3 +1,8 @@
+# Defines if the home partition should be freshly formatted instead of converted.
+# Backup will be attempted if memory allows it but expect complete data loss!
+STEAMOS_BTRFS_HOME_FORMAT="0"
+# Defines the format options used for mkfs.btrfs when 'STEAMOS_BTRFS_HOME_FORMAT' is enabled
+STEAMOS_BTRFS_HOME_FORMAT_OPTS="-f"
 # Defines the options used by btrfs-convert to convert home from ext4 to btrfs (default: "-L --uuid copy")
 STEAMOS_BTRFS_HOME_CONVERT_OPTS="-L --uuid copy"
 # Defines the mount options for the home partition (default: "defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,nodiscard")

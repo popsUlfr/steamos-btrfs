@@ -6,6 +6,8 @@ set -eu
 
 HOME_DEVICE="/dev/disk/by-partsets/shared/home"
 HOME_MOUNTPOINT="/home"
+HOME_BACKUP="/tmp/homebackup"
+HOME_BACKUP_RSYNC_FLAGS="-ahHAX --inplace --delete --info=progress2 --stats"
 ROOTFS_DEVICE="/dev/disk/by-partsets/self/rootfs"
 ROOTFS_MOUNTPOINT="/mnt"
 VAR_DEVICE="/dev/disk/by-partsets/self/var"
@@ -20,10 +22,23 @@ fi
 HOME_CONVERT_OPTS="${STEAMOS_BTRFS_HOME_CONVERT_OPTS:--L --uuid copy}"
 HOME_MOUNT_OPTS="${STEAMOS_BTRFS_HOME_MOUNT_OPTS:-defaults,nofail,x-systemd.growfs,noatime,lazytime,compress-force=zstd,space_cache=v2,autodefrag,nodiscard}"
 HOME_MOUNT_SUBVOL="${STEAMOS_BTRFS_HOME_MOUNT_SUBVOL:-@}"
+HOME_FORMAT="${STEAMOS_BTRFS_HOME_FORMAT:-0}"
+HOME_FORMAT_OPTS="${STEAMOS_BTRFS_HOME_FORMAT_OPTS:--f}"
 
 cmd() {
     echo '[$]' "${@@Q}" >&2
     "$@"
+}
+
+is_true() {
+    local v="${1:-}"
+    v="${v//[[:space:]]/}"
+    v="${v,,}"
+    if [[ -n "${v}" && "${v}" != '0' && "${v}" != 'n' && "${v}" != 'no' && "${v}" != 'false' ]]; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 mask_service() {
@@ -50,6 +65,44 @@ then
     systemd-notify --ready --status="$HOME_MOUNTPOINT is already formatted as btrfs"
     exit 0
 fi
+
+home_rsync_exclusions() {
+    local ret=1
+    if ! cmd mount -o ro "$HOME_DEVICE" "$HOME_MOUNTPOINT"
+    then
+        return "$ret"
+    fi
+    local exclusions=(
+        '.steamos/offload/cache'
+        '.steamos/offload/log'
+        '.steamos/offload/tmp'
+        'deck/.cache'
+        'deck/.local/share/Steam/steamapps'
+        'deck/.local/share/Steam/userdata')
+    # Calculate maximum allowed temporary data
+    local max_size
+    max_size="$(df -B 1 --output=avail /tmp/ | tail -n 1 | awk '{print int($1 * 0.75)}')"
+    local i=4
+    while [[ "$i" -le "${#exclusions[@]}" ]]
+    do
+        local du_excls=()
+        for e in "${exclusions[@]:0:i}"
+        do
+            du_excls+=("--exclude=${e}")
+        done
+        local size=0
+        size="$(du -b -s -x "${du_excls[@]}" "$HOME_MOUNTPOINT"/)"
+        if [[ "$size" -le "$max_size" ]]
+        then
+            printf '%s\0' "${exclusions[@]:0:i}"
+            ret=0
+            break
+        fi
+        i=$((i+1))
+    done
+    cmd umount -l "$HOME_MOUNTPOINT" || true
+    return "$ret"
+}
 
 exit_reboot_error() {
     echo "(100%) Error encountered. Rebooting in 120 seconds..."
@@ -114,6 +167,10 @@ exit_restore_fstab() {
     cmd umount -l "$ROOTFS_MOUNTPOINT" || true
 }
 
+exit_umount_home() {
+    cmd umount -l "$HOME_MOUNTPOINT" || true
+}
+
 onexit=(exit_restore_fstab exit_log exit_reboot_error)
 if cmd mkdir -p "$(dirname "$LOGFILE")" && cmd touch "$LOGFILE"
 then
@@ -138,14 +195,80 @@ then
     exit 1
 fi
 echo "(  5%) Filesystem check done."
-# Convert to btrfs keeping label and uuid
-echo "(  5%) Start btrfs conversion..."
-if ! cmd btrfs-convert ${HOME_CONVERT_OPTS} "$HOME_DEVICE"
+if is_true "${HOME_FORMAT}"
 then
-    echo "(100%) Btrfs conversion error." >&2
-    exit 1
+    if rsync_excls_blob="$(home_rsync_exclusions)"
+    then
+        echo "(  5%) Start /home backup..."
+        if ! cmd mount -o ro "$HOME_DEVICE" "$HOME_MOUNTPOINT"
+        then
+            echo "(100%) Mount error." >&2
+            exit 1
+        fi
+        onexit=(exit_umount_home "${onexit[@]}")
+        rsync_excls=()
+        readarray -d '' -t rsync_excls <<<"$rsync_excls_blob"
+        rsync_excls_cmds=()
+        for e in "${rsync_excls[@]}"
+        do
+            rsync_excls_cmds+=("--exclude=${e}")
+        done
+        cmd mkdir -p "$HOME_BACKUP"
+        if ! cmd rsync ${HOME_BACKUP_RSYNC_FLAGS} "${rsync_excls_cmds[@]}" "$HOME_MOUNTPOINT"/ "$HOME_BACKUP"/
+        then
+            echo "(100%) Backup error." >&2
+            exit 1
+        fi
+        exit_umount_home
+        onexit=("${onexit[@]:1}")
+    fi
+    # Fresh format home partition
+    echo "( 20%) Start btrfs format..."
+    home_dev_format_opts=()
+    home_dev_uuid="$(blkid -o value -s UUID "$HOME_DEVICE")"
+    home_dev_label="$(blkid -o value -s LABEL "$HOME_DEVICE")"
+    if [[ -n "$home_dev_uuid" ]]
+    then
+        home_dev_format_opts+=(-U "$home_dev_uuid")
+    fi
+    if [[ -n "$home_dev_label" ]]
+    then
+        home_dev_format_opts+=(-L "$home_dev_label")
+    fi
+    if ! cmd mkfs.btrfs "${home_dev_format_opts[@]}" ${HOME_FORMAT_OPTS} "$HOME_DEVICE"
+    then
+        echo "(100%) Btrfs format error." >&2
+        exit 1
+    fi
+    if [[ -d "$HOME_BACKUP" ]]
+    then
+        echo "( 30%) Start /home restore..."
+        if ! cmd mount -o "${HOME_MOUNT_OPTS}" "$HOME_DEVICE" "$HOME_MOUNTPOINT"
+        then
+            echo "(100%) Mount error." >&2
+            exit 1
+        fi
+        onexit=(exit_umount_home "${onexit[@]}")
+        if ! cmd rsync ${HOME_BACKUP_RSYNC_FLAGS} "$HOME_BACKUP"/ "$HOME_MOUNTPOINT"/
+        then
+            echo "(100%) Backup restore error." >&2
+            exit 1
+        fi
+        exit_umount_home
+        onexit=("${onexit[@]:1}")
+        cmd rm -rf "$HOME_BACKUP" || true
+    fi
+    echo "( 40%) Btrfs format done."
+else
+    # Convert to btrfs keeping label and uuid
+    echo "(  5%) Start btrfs conversion..."
+    if ! cmd btrfs-convert ${HOME_CONVERT_OPTS} "$HOME_DEVICE"
+    then
+        echo "(100%) Btrfs conversion error." >&2
+        exit 1
+    fi
+    echo "( 40%) Btrfs conversion done."
 fi
-echo "( 40%) Btrfs conversion done."
 onexit=("${onexit[@]:1}")
 cmd mkdir -p "$ROOTFS_MOUNTPOINT"
 if ! cmd mount "$ROOTFS_DEVICE" "$ROOTFS_MOUNTPOINT"
@@ -191,23 +314,23 @@ then
     echo "(100%) Mount error." >&2
     exit 1
 fi
-exit_umount_home() {
-    cmd umount -l "$HOME_MOUNTPOINT" || true
-}
 onexit=(exit_umount_home "${onexit[@]}")
-# Remove the original metadata
-echo "( 40%) Remove ext2_saved."
-if ! cmd btrfs subvolume delete "$HOME_MOUNTPOINT"/ext2_saved
+if ! is_true "${HOME_FORMAT}"
 then
-    echo "(100%) Subvolume delete ext2_saved error." >&2
-    exit 1
+    # Remove the original metadata
+    echo "( 40%) Remove ext2_saved."
+    if ! cmd btrfs subvolume delete "$HOME_MOUNTPOINT"/ext2_saved
+    then
+        echo "(100%) Subvolume delete ext2_saved error." >&2
+        exit 1
+    fi
+    # Not needed anymore
+    echo "( 41%) Remove lost+found."
+    cmd rm -rf "$HOME_MOUNTPOINT"/lost+found
+    # Remove the swapfile if present
+    echo "( 42%) Remove swapfile."
+    cmd rm -f "$HOME_MOUNTPOINT"/swapfile
 fi
-# Not needed anymore
-echo "( 41%) Remove lost+found."
-cmd rm -rf "$HOME_MOUNTPOINT"/lost+found
-# Remove the swapfile if present
-echo "( 42%) Remove swapfile."
-cmd rm -f "$HOME_MOUNTPOINT"/swapfile
 # Create the root subvolume ${HOME_MOUNT_SUBVOL}
 echo "( 43%) Create root subvolume ${HOME_MOUNT_SUBVOL}."
 if ! cmd btrfs subvolume create "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL"
@@ -253,7 +376,7 @@ do
         i=1
         for p in "${d_parts[@]:1}"
         do
-            d_parts[$i]="${d_parts[$((i-1))]}/${p%[[:space:]]*}"
+            d_parts[i]="${d_parts[$((i-1))]}/${p%[[:space:]]*}"
             i=$((i+1))
         done
         cmd chown deck:deck "${d_parts[@]}"
