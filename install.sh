@@ -904,16 +904,34 @@ rootfs_install_packages() {
   eprint "Install the needed arch packages: ${PKGS[*]}"
   pacman_repos_check_and_fix
   PACMAN_CACHE="$(mktemp -d)"
-  factory_pacman --cachedir "${PACMAN_CACHE}" -Sy --needed --overwrite='*' "${PKGS[@]}"
+  # special packages to handle one by one
+  local spkgs=(rmlint duperemove)
+  local pkgs=()
+  for pkg in "${PKGS[@]}"; do
+    local add=1
+    for mpkg in "${spkgs[@]}"; do
+      if [[ "${pkg}" == "${mpkg}" ]]; then
+        add=0
+        break
+      fi
+    done
+    if [[ "${add}" -eq 1 ]]; then
+      pkgs+=("${pkg}")
+    fi
+  done
+  factory_pacman --cachedir "${PACMAN_CACHE}" -Sy --needed --overwrite='*' "${pkgs[@]}"
+  for spkg in "${spkgs[@]}"; do
+    factory_pacman --cachedir "${PACMAN_CACHE}" -S --needed --overwrite='*' "${spkg}" || true
+  done
   # install rmlint version that is at least 2.10.2
   if ! sort -C -V < <(echo '2.10.2-1' ;
-    factory_pacman -Qiq rmlint | sed -n 's/^Version\s*:\s*\(\S\+\)\s*$/\1/p'); then
+    { factory_pacman -Qiq rmlint || echo 'Version : 0' ;} | sed -n 's/^Version\s*:\s*\(\S\+\)\s*$/\1/p'); then
     eprint "Force install rmlint-2.10.2-1"
     factory_pacman --cachedir "${PACMAN_CACHE}" -U "${WORKDIR}/data/rmlint-2.10.2-1-x86_64.pkg.tar.zst"
   fi
   # install duperemove version that is at least 0.14.1
   if ! sort -C -V < <(echo '0.14.1-1' ;
-    factory_pacman -Qiq duperemove | sed -n 's/^Version\s*:\s*\(\S\+\)\s*$/\1/p'); then
+    { factory_pacman -Qiq duperemove || echo 'Version : 0' ;} | sed -n 's/^Version\s*:\s*\(\S\+\)\s*$/\1/p'); then
     eprint "Force install duperemove-0.14.1-1"
     factory_pacman --cachedir "${PACMAN_CACHE}" -U "${WORKDIR}/data/duperemove-0.14.1-1-x86_64.pkg.tar.zst"
   fi
