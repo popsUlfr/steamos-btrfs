@@ -9,15 +9,19 @@ Btrfs with its transparent compression and deduplication capabilities can achiev
 
 **Make sure you have at least 10-20% free space available before attempting the conversion (`df -h /home` 80-90% use with at least 10-20 GiB available space)**
 
+**There's also the option to freshly format the /home partition instead of converting it. An attempt to backup the data will be made if the memory allows for it but expect data loss!**
+
 - https://wiki.archlinux.org/title/Btrfs
 - https://wiki.archlinux.org/title/F2FS
 
 ## Features
 
 - Btrfs /home conversion from ext4 (optional)
+- Btrfs /home formatting without conversion with minimal backup if possible (optional)
 - Btrfs, f2fs, ext4, fat, exfat, ntfs formatted SD card support
 - Btrfs, f2fs, ext4, fat, exfat, ntfs formating of SD card
 - Progress dialog and logging during the home conversion!
+- Rollback attempt in case of errors after conversion or mounting
 - Install additional pacman packages into the rootfs automatically and persist through updates
 - **Survives updates and branch changes!**
 - Steam's `downloading` and `temp` folders as subvolumes with COW disabled
@@ -39,8 +43,11 @@ Btrfs with its transparent compression and deduplication capabilities can achiev
 **CAUTION**: there's not an easy way back if you proceed! Once the /home partition is converted, you can not go back to ext4 and keep your files.
 The original files that have been changed are backed up with the `.orig` extension. Keep in mind that they are specifically changed to allow for a btrfs `/home`.
 It is safe to revert to the original files if the btrfs conversion was not attempted.
+A rollback will be attempted if the conversion fails but in the worst case the `/home` partition may need to be reformatted.
 
 **Please make sure you have enough free space before attempting the conversion. At least 10-20GiB and/or 10-20% free space should usually be fine.**
+
+**If you wish to freshly format your `/home` partition instead, make sure to modify the `STEAMOS_BTRFS_HOME_FORMAT` option in the [Configuration options](#configuration-options) before starting the installer or just before rebooting.**
 
 **Double-click the downloaded file**
 
@@ -247,6 +254,10 @@ The following mount options are used by default:
 
 A configuration file is available to change various filesystem options at [`/etc/default/steamos-btrfs`](files/etc/default/steamos-btrfs).
 
+If it's a first time installation, edit `./files/etc/default/steamos-btrfs`.
+
+- `STEAMOS_BTRFS_HOME_FORMAT`               : toggle formatting of the `/home` partition instead of converting it. An attempt will be made to backup `/home` if the memory allows for it but **expect data loss when using this options!**
+- `STEAMOS_BTRFS_HOME_FORMAT_OPTS`          : flags to pass to `mkfs.btrfs` when freshly formatting the `/home` partition instead of converting it.
 - `STEAMOS_BTRFS_HOME_CONVERT_OPTS`         : the options to pass to `btrfs-convert` during the `/home` conversion. You could for instance choose a different checksumming algorithm like `xxhash` instead of `crc32c` with `--checksum xxhash`.
 - `STEAMOS_BTRFS_HOME_MOUNT_OPTS`           : the mount options to use for mounting the `/home` partition. Changing only this variable will not have any effect if the conversion is already done. `/etc/fstab` would need to be edited to reflect the new values and you can do this easily by running the installation script again [`./install.sh`](install.sh) (pick `Convert /home` again during installation).
 - `STEAMOS_BTRFS_HOME_MOUNT_SUBVOL`         : the root subvolume to use when mounting. Changing only this variable will not have any effect if the conversion is already done. A new subvolume with the desired name would need to be created and `/etc/fstab` would need to be edited to reflect the new values.
@@ -277,6 +288,7 @@ sudo rm -f /var/lib/overlays/etc/upper/default/steamos-btrfs
 Refresh the overlay for `/etc`:
 ```sh
 sudo mount -o remount /etc
+echo 3 | sudo tee /proc/sys/vm/drop_caches
 ```
 
 ## Deduplication
