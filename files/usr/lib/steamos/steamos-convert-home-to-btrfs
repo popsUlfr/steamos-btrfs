@@ -7,7 +7,7 @@ set -eu
 HOME_DEVICE="/dev/disk/by-partsets/shared/home"
 HOME_MOUNTPOINT="/home"
 HOME_BACKUP="/tmp/homebackup"
-HOME_BACKUP_RSYNC_FLAGS="-vahHAX --inplace --delete --stats"
+HOME_BACKUP_RSYNC_FLAGS="-ahHAX --inplace --delete --stats"
 ROOTFS_DEVICE="/dev/disk/by-partsets/self/rootfs"
 ROOTFS_MOUNTPOINT="/mnt"
 VAR_DEVICE="/dev/disk/by-partsets/self/var"
