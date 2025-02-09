@@ -81,7 +81,7 @@ home_rsync_exclusions() {
         'deck/.local/share/Steam/userdata')
     # Calculate maximum allowed temporary data
     local max_size
-    max_size="$(df -B 1 --output=avail /tmp/ | tail -n 1 | awk '{print int($1 * 0.75)}')"
+    max_size="$(df -B 1 --output=avail /tmp/ | tail -n 1 | awk '{print int($1 * 0.8)}')"
     local i=4
     while [[ "$i" -le "${#exclusions[@]}" ]]
     do
@@ -92,6 +92,8 @@ home_rsync_exclusions() {
         done
         local size=0
         size="$(du -b -s -x "${du_excls[@]}" "$HOME_MOUNTPOINT"/ | awk '{print $1}')"
+        echo "du -b -s -x ${du_excls[*]} $HOME_MOUNTPOINT/"
+        echo "$size/$max_size"
         if [[ "$size" -le "$max_size" ]]
         then
             printf '%s\0' "${exclusions[@]:0:i}"
@@ -221,6 +223,8 @@ then
         fi
         exit_umount_home
         onexit=("${onexit[@]:1}")
+    else
+        echo "( 10%) Warning: not enough memory for backup."
     fi
     # Fresh format home partition
     echo "( 20%) Start btrfs format..."
@@ -348,13 +352,16 @@ fi
 echo "( 50%) Moving all files into ${HOME_MOUNT_SUBVOL} done."
 # Pass all files through the allocator, can take a while
 nbfiles="$(find "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL" -type f -printf '\n' | wc -l)"
-echo "( 50%) Start defragmentation on $nbfiles files..."
-if ! cmd stdbuf -oL btrfs filesystem defrag -czstd -v -r -f "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL" | awk '{printf("( %d%%) Defragmenting %s\n",50+(NR/'"$nbfiles"'*40),$0)}'
+if [[ "$nbfiles" -gt 0 ]]
 then
-    echo "(100%) Defragmentation error." >&2
-    exit 1
+    echo "( 50%) Start defragmentation on $nbfiles files..."
+    if ! cmd stdbuf -oL btrfs filesystem defrag -czstd -v -r -f "$HOME_MOUNTPOINT/$HOME_MOUNT_SUBVOL" | awk '{printf("( %d%%) Defragmenting %s\n",50+(NR/'"$nbfiles"'*40),$0)}'
+    then
+        echo "(100%) Defragmentation error." >&2
+        exit 1
+    fi
+    echo "( 90%) Defragmentation done."
 fi
-echo "( 90%) Defragmentation done."
 # Run balance
 echo "( 90%) Start balance..."
 if ! cmd btrfs balance start -m -v "$HOME_MOUNTPOINT"
