@@ -92,11 +92,9 @@ home_rsync_exclusions() {
         done
         local size=0
         size="$(du -b -s -x "${du_excls[@]}" "$HOME_MOUNTPOINT"/ | awk '{print $1}')"
-        echo "du -b -s -x ${du_excls[*]} $HOME_MOUNTPOINT/" >&2
-        echo "$size/$max_size" >&2
         if [[ "$size" -le "$max_size" ]]
         then
-            printf '%s\0' "${exclusions[@]:0:i}"
+            printf '%s\n' "${exclusions[@]:0:i}"
             ret=0
             break
         fi
@@ -209,7 +207,7 @@ then
         fi
         onexit=(exit_umount_home "${onexit[@]}")
         rsync_excls=()
-        readarray -d '' -t rsync_excls <<<"$rsync_excls_blob"
+        readarray -d $'\n' -t rsync_excls <<<"$rsync_excls_blob"
         rsync_excls_cmds=()
         for e in "${rsync_excls[@]}"
         do
