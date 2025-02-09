@@ -7,7 +7,7 @@ set -eu
 HOME_DEVICE="/dev/disk/by-partsets/shared/home"
 HOME_MOUNTPOINT="/home"
 HOME_BACKUP="/tmp/homebackup"
-HOME_BACKUP_RSYNC_FLAGS="-ahHAX --inplace --delete --info=progress2 --stats"
+HOME_BACKUP_RSYNC_FLAGS="-vahHAX --inplace --delete --stats"
 ROOTFS_DEVICE="/dev/disk/by-partsets/self/rootfs"
 ROOTFS_MOUNTPOINT="/mnt"
 VAR_DEVICE="/dev/disk/by-partsets/self/var"
@@ -81,7 +81,7 @@ home_rsync_exclusions() {
         'deck/.local/share/Steam/userdata')
     # Calculate maximum allowed temporary data
     local max_size
-    max_size="$(df -B 1 --output=avail /tmp/ | tail -n 1 | awk '{print int($1 * 0.8)}')"
+    max_size="$(df -B 1 --output=avail /tmp/ | tail -n 1 | awk '{print int($1 * 0.9)}')"
     local i=4
     while [[ "$i" -le "${#exclusions[@]}" ]]
     do
@@ -92,8 +92,8 @@ home_rsync_exclusions() {
         done
         local size=0
         size="$(du -b -s -x "${du_excls[@]}" "$HOME_MOUNTPOINT"/ | awk '{print $1}')"
-        echo "du -b -s -x ${du_excls[*]} $HOME_MOUNTPOINT/"
-        echo "$size/$max_size"
+        echo "du -b -s -x ${du_excls[*]} $HOME_MOUNTPOINT/" >&2
+        echo "$size/$max_size" >&2
         if [[ "$size" -le "$max_size" ]]
         then
             printf '%s\0' "${exclusions[@]:0:i}"
