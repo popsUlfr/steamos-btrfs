@@ -1127,6 +1127,8 @@ rootfs_copy_files() {
   # try to remount /etc overlay to refresh the lowerdir otherwise the files look corrupted
   eprint "Remount /etc overlay to refresh the installed files"
   cmd mount -o remount /etc || true
+  # if remount fails this should do it
+  echo 3 > /proc/sys/vm/drop_caches || true
   ONEXITERR=("${ONEXITERR[@]:1}")
   ONEXITRESTORE=(rootfs_copy_files_cleanup "${ONEXITRESTORE[@]}")
 }
@@ -1180,6 +1182,8 @@ specialty_timers_enable() {
   # try to remount /etc overlay to refresh the lowerdir otherwise the files look corrupted
   eprint "Remount /etc overlay to refresh the changed files"
   cmd mount -o remount /etc || true
+  # if remount fails this should do it
+  echo 3 > /proc/sys/vm/drop_caches || true
   cmd systemctl daemon-reload || true
   cmd systemctl start fstrim.timer || true
   cmd systemctl start btrfs-dedup@home.timer || true
