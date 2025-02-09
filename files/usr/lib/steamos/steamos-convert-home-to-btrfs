@@ -266,10 +266,31 @@ else
     echo "(  5%) Start btrfs conversion..."
     if ! cmd btrfs-convert ${HOME_CONVERT_OPTS} "$HOME_DEVICE"
     then
-        echo "(100%) Btrfs conversion error." >&2
+        echo "( 90%) Btrfs conversion error." >&2
+        echo "( 90%) Attempting to roll back to ext4..."
+        if ! cmd btrfs-convert -r "$HOME_DEVICE"
+        then
+            echo echo "(100%) Rollback failed." >&2
+        else
+            echo echo "(100%) Rollback succeeded."
+        fi
         exit 1
     fi
     echo "( 40%) Btrfs conversion done."
+    echo "( 40%) Checking /home mount..."
+    if ! cmd mount -o "${HOME_MOUNT_OPTS}" "$HOME_DEVICE" "$HOME_MOUNTPOINT"
+    then
+        echo "( 90%) Mount error." >&2
+        echo "( 90%) Attempting to roll back to ext4..."
+        if ! cmd btrfs-convert -r "$HOME_DEVICE"
+        then
+            echo echo "(100%) Rollback failed." >&2
+        else
+            echo echo "(100%) Rollback succeeded."
+        fi
+        exit 1
+    fi
+    exit_umount_home
 fi
 onexit=("${onexit[@]:1}")
 cmd mkdir -p "$ROOTFS_MOUNTPOINT"
