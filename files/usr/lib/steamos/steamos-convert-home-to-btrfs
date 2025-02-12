@@ -73,9 +73,9 @@ home_rsync_exclusions() {
         return "$ret"
     fi
     local exclusions=(
-        '.steamos/offload/cache'
-        '.steamos/offload/log'
-        '.steamos/offload/tmp'
+        '.steamos/offload/var/cache'
+        '.steamos/offload/var/log'
+        '.steamos/offload/var/tmp'
         'deck/.cache'
         'deck/.local/share/Steam/steamapps'
         'deck/.local/share/Steam/userdata')
