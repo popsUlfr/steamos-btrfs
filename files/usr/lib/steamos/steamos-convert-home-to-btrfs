@@ -270,9 +270,9 @@ else
         echo "( 90%) Attempting to roll back to ext4..."
         if ! cmd btrfs-convert -r "$HOME_DEVICE"
         then
-            echo echo "(100%) Rollback failed." >&2
+            echo "(100%) Rollback failed." >&2
         else
-            echo echo "(100%) Rollback succeeded."
+            echo "(100%) Rollback succeeded."
         fi
         exit 1
     fi
@@ -284,9 +284,9 @@ else
         echo "( 90%) Attempting to roll back to ext4..."
         if ! cmd btrfs-convert -r "$HOME_DEVICE"
         then
-            echo echo "(100%) Rollback failed." >&2
+            echo "(100%) Rollback failed." >&2
         else
-            echo echo "(100%) Rollback succeeded."
+            echo "(100%) Rollback succeeded."
         fi
         exit 1
     fi
