@@ -7,7 +7,7 @@ set -eu
 HOME_DEVICE="/dev/disk/by-partsets/shared/home"
 HOME_MOUNTPOINT="/home"
 HOME_BACKUP="/tmp/homebackup"
-HOME_BACKUP_RSYNC_FLAGS="-ahHAX --inplace --delete --stats"
+HOME_BACKUP_RSYNC_FLAGS="-ahHAX --inplace --delete --ignore-errors --stats"
 ROOTFS_DEVICE="/dev/disk/by-partsets/self/rootfs"
 ROOTFS_MOUNTPOINT="/mnt"
 VAR_DEVICE="/dev/disk/by-partsets/self/var"
@@ -76,13 +76,14 @@ home_rsync_exclusions() {
         '.steamos/offload/var/cache'
         '.steamos/offload/var/log'
         '.steamos/offload/var/tmp'
+        '.steamos/offload/var/lib/systemd/coredump'
         'deck/.cache'
         'deck/.local/share/Steam/steamapps'
         'deck/.local/share/Steam/userdata')
     # Calculate maximum allowed temporary data
     local max_size
     max_size="$(df -B 1 --output=avail /tmp/ | tail -n 1 | awk '{print int($1 * 0.9)}')"
-    local i=4
+    local i=5
     while [[ "$i" -le "${#exclusions[@]}" ]]
     do
         local du_excls=()
@@ -214,11 +215,7 @@ then
             rsync_excls_cmds+=("--exclude=${e}")
         done
         cmd mkdir -p "$HOME_BACKUP"
-        if ! cmd rsync ${HOME_BACKUP_RSYNC_FLAGS} "${rsync_excls_cmds[@]}" "$HOME_MOUNTPOINT"/ "$HOME_BACKUP"/
-        then
-            echo "(100%) Backup error." >&2
-            exit 1
-        fi
+        cmd rsync ${HOME_BACKUP_RSYNC_FLAGS} "${rsync_excls_cmds[@]}" "$HOME_MOUNTPOINT"/ "$HOME_BACKUP"/ || true
         exit_umount_home
         onexit=("${onexit[@]:1}")
     else
@@ -251,11 +248,7 @@ then
             exit 1
         fi
         onexit=(exit_umount_home "${onexit[@]}")
-        if ! cmd rsync ${HOME_BACKUP_RSYNC_FLAGS} "$HOME_BACKUP"/ "$HOME_MOUNTPOINT"/
-        then
-            echo "(100%) Backup restore error." >&2
-            exit 1
-        fi
+        cmd rsync ${HOME_BACKUP_RSYNC_FLAGS} "$HOME_BACKUP"/ "$HOME_MOUNTPOINT"/ || true
         exit_umount_home
         onexit=("${onexit[@]:1}")
         cmd rm -rf "$HOME_BACKUP" || true
