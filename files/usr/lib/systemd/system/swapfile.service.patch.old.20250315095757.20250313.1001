@@ -1,0 +1,12 @@
+--- main/usr/lib/systemd/system/swapfile.service	2025-03-10 20:14:23.000000000 +0100
++++ work/usr/lib/systemd/system/swapfile.service	2025-03-15 10:57:57.547916300 +0100
+@@ -19,7 +19,8 @@
+ [Service]
+ Type=oneshot
+ RemainAfterExit=yes
+-ExecStart=/usr/bin/mkswap --file /home/swapfile --size 1024M
++ExecStart=sh -c '[ "$$(findmnt -n -o FSTYPE /home)" != "btrfs" ] && exit 0 ; btrfs subvolume create /home/@swapfile ; btrfs filesystem mkswapfile --size 1024m --uuid clear /home/@swapfile/swapfile ; ln -s @swapfile/swapfile /home/swapfile'
++ExecStart=sh -c '[ "$$(findmnt -n -o FSTYPE /home)" = "btrfs" ] && exit 0 ; /usr/bin/mkswap --file /home/swapfile --size 1024M'
+ 
+ [Install]
+ WantedBy=swap.target
